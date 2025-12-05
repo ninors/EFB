@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"            rel="stylesheet">
+    <title>Interface Style Air France - Page 2</title>
+  <style>
+    /* Style général */
+    html, body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-color: #33384b;
+        color: white;
+
+        /* ✅ Activation du scroll sans affichage de la scrollbar */
+        overflow-y: auto;
+        height: auto;
+        min-height: 100vh;
+
+        /* ❌ Supprimer le centrage bloquant qui empêche le scroll */
+        display: block;
+    }
+
+    /* Conteneur principal */
+    .container {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        grid-template-rows: 50px 1fr;
+        width: 70vw;
+        min-height: 90vh;
+        border-radius: 12px;
+        overflow: hidden;
+        background-color: #33384b;
+        position: relative;
+        margin: 40px auto; /* Centrage vertical simulé */
+    }
+
+    /* Barre supérieure */
+    .topbar {
+        grid-column: 1 / 3;
+        background-color: #2b2f3a;
+        display: flex;
+        align-items: center;
+        padding-left: 20px;
+        font-size: 1.1em;
+        font-weight: bold;
+        color: #8b8f9a;
+    }
+
+    /* Barre latérale gauche */
+    .sidebar {
+        background-color: #2b2f3a;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 0;
+        grid-row: 2 / 3;
+    }
+
+    /* Menu contenant les groupes d’icônes */
+    .icon-menu {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        width: 100%;
+        align-items: center;
+    }
+
+    /* Groupes d’icônes */
+    .icon-top, .icon-middle, .icon-bottom {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+    }
+
+    /* Icône individuelle */
+    .icon {
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Icône Google Material */
+    .icon .material-icons {
+        font-size: 35px;
+        color: white;
+    }
+
+    /* Zone de contenu principale */
+    .content {
+        background-color: #2b2f3a;
+        border: 1px solid #2b2f3a; /* Corrigé : deux dièses "##" interdits */
+        border-radius: 8px;
+        margin: 20px;
+        grid-column: 2 / 3;
+        grid-row: 2 / 3;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    /* Style pour l'iframe */
+    .iframe-container {
+        width: 100%;
+        height: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 8px;
+
+        /* ✅ Masquage scrollbar mais scroll actif */
+        overflow-y: auto;
+        scrollbar-width: none;           /* Firefox */
+        -ms-overflow-style: none;        /* IE/Edge */
+    }
+
+    iframe::-webkit-scrollbar {
+        display: none;                   /* Chrome, Safari, Opera */
+    }
+
+    /* Modale */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: #2b2f3a;
+        color: white;
+        border-radius: 16px;
+        margin: 6% auto;
+        padding: 20px 20px 0 20px;
+        width: 80%;
+        max-width: 900px;
+        height: 70vh;
+        position: relative;
+        box-shadow: 0 0 15px rgba(0,0,0,0.4);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .modal-content iframe {
+        flex: 1;
+        border: none;
+        border-radius: 12px;
+        width: 100%;
+    }
+
+    /* Bouton de fermeture */
+    .close-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 28px;
+        color: white;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .close-btn:hover {
+        color: red;
+    }
+</style>
+
+</head>
+<body>
+    <div class="container">
+        <!-- Barre supérieure -->
+       <div class="topbar" onclick="openModal()" style="cursor: pointer;">
+            Settings - flyPad
+        </div>
+
+        <!-- Barre latérale gauche -->
+<div class="sidebar">
+    <div class="icon-menu">
+       <div class="icon"><a href="page1.html"><span class="material-icons" style="color: #ffffff;">airlines</span></a></div>
+        <div class="icon"><a href="page2.html"><span class="material-icons">receipt</span></a></div>
+        <div class="icon"><a href="page3.html"><span class="material-icons">map</span></a></div>
+        <div class="icon"><a href="page4.html"><span class="material-icons">checklist</span></a></div>
+       <div class="icon"><a href="page5.html"><span class="material-icons" style="color: #800000;">apps</span></a></div>
+        <div class="icon"><a href="page6.html"><span class="material-icons" style="color: #ffffff;">airplane_ticket</span></a></div>
+    </div>
+</div>
+
+
+       <!-- Zone de contenu principale -->
+<div class="content">
+    <!-- Intégration du site via iframe -->
+    <div class="iframe-container">
+        <iframe src="applications.html"></iframe>
+    </div>
+</div>
+
+<!-- Fenêtre modale -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <span class="material-icons close-btn" onclick="closeModal()">keyboard_arrow_up
+</span>
+        <iframe src="settings.html" title="Paramètres FlyPad"></iframe>
+    </div>
+</div>
+
+
+<!-- Script pour ouvrir/fermer la modale -->
+<script>
+function openModal() {
+    document.getElementById('settingsModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+
+// Fermer si clic en dehors
+window.onclick = function(event) {
+    const modal = document.getElementById('settingsModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+
+</div> <!-- Fermeture de .container -->
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Serveur Status</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@200" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #2b2f3a;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      flex-direction: column;
+    }
+
+    .server-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 25px;
+      background-color: #33384b;
+      padding: 14px 24px;
+      border-radius: 12px;
+      border: 1px solid #444;
+      flex-wrap: wrap;
+      max-width: 90%;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+
+    .material-symbols-outlined {
+      vertical-align: middle;
+      font-size: 20px;
+    }
+
+    .refresh-icon {
+      cursor: pointer;
+      font-size: 22px;
+      color: white;
+      margin-left: 10px;
+    }
+
+    .load {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #aaa;
+      border-top: 2px solid #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .info-box {
+      margin-top: 20px;
+      background-color: #33384b;
+      padding: 15px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 700px;
+      min-height: 70px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .box-title {
+      font-weight: bold;
+      flex-grow: 1;
+    }
+
+    .formateur-icon {
+      font-size: 30px;
+      cursor: pointer;
+      color: white;
+      display: inline-block;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="server-box">
+    <!-- Serveur 1 -->
+    <div class="status-item" data-name="SERV 1" data-url="https://hipflight.fr">
+      <div class="load"></div>
+      <span class="material-symbols-outlined ok" style="color:lightgreen;display:none;">cloud_done</span>
+      <span class="material-symbols-outlined fail" style="color:red;display:none;">cloud_off</span>
+      SERV 1
+    </div>
+    <!-- Serveur 2 -->
+    <div class="status-item" data-name="SERV 2" data-url="https://airfrance.fr">
+      <div class="load"></div>
+      <span class="material-symbols-outlined ok" style="color:lightgreen;display:none;">cloud_done</span>
+      <span class="material-symbols-outlined fail" style="color:red;display:none;">cloud_off</span>
+      SERV 2
+    </div>
+    <!-- Serveur 3 -->
+    <div class="status-item" data-name="SERV 3" data-url="https://alibaba.com">
+      <div class="load"></div>
+      <span class="material-symbols-outlined ok" style="color:lightgreen;display:none;">cloud_done</span>
+      <span class="material-symbols-outlined fail" style="color:red;display:none;">cloud_off</span>
+      SERV 3
+    </div>
+
+    <!-- Bouton Recharger -->
+    <span class="material-symbols-outlined refresh-icon" onclick="check()">refresh</span>
+  </div>
+
+  <!-- Date de mise à jour -->
+  <div class="info-box">
+    <div class="box-title">Date de mise à jour :</div>
+    <p id="update-date"></p>
+  </div>
+
+  <!-- Mode formateur -->
+  <div class="info-box">
+    <div class="box-title">Mode Formateur :</div>
+    <span class="material-symbols-outlined formateur-icon" onclick="window.open('https://example.com', '_blank')">book</span>
+  </div>
+
+  <script>
+    // Affichage de la date de mise à jour
+    const date = new Date();
+    document.getElementById("update-date").innerText = date.toLocaleDateString() + " " + date.toLocaleTimeString();
+
+    function check() {
+      document.querySelectorAll('.status-item').forEach(item => {
+        const url = item.dataset.url;
+        item.querySelector('.load').style.display = 'inline-block';
+        item.querySelector('.ok').style.display = 'none';
+        item.querySelector('.fail').style.display = 'none';
+
+        fetch(url, { mode: 'no-cors' })
+          .then(() => {
+            item.querySelector('.load').style.display = 'none';
+            item.querySelector('.ok').style.display = 'inline-block';
+          })
+          .catch(() => {
+            item.querySelector('.load').style.display = 'none';
+            item.querySelector('.fail').style.display = 'inline-block';
+          });
+      });
+    }
+
+    window.onload = check;
+  </script>
+
+</body>
+</html>

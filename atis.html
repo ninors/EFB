@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>ATIS IVAO Lecture Vocale</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <style>
+        /* Styles de base - Dark Mode */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #33384b; /* Fond principal sombre */
+            display: flex;
+            justify-content: flex-start; /* Alignement en haut de page */
+            align-items: center;
+            min-height: 100vh;
+            color: white; /* Texte en blanc */
+            flex-direction: column;
+            padding-top: 50px; /* Espace en haut */
+            
+            /* ======== MASQUER LA SCROLLBAR (Début) ======== */
+            overflow-y: scroll; /* Permet le défilement */
+            -ms-overflow-style: none; /* IE et Edge Legacy */
+            scrollbar-width: none; /* Firefox */
+        }
+
+        /* Masquer la scrollbar (Chrome, Edge, Safari) */
+        body::-webkit-scrollbar, html::-webkit-scrollbar {
+            display: none;
+            width: 0px; 
+            height: 0px;
+        }
+        /* Masquer la scrollbar pour tous les éléments, au cas où (Firefox/IE Legacy) */
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        /* ======== MASQUER LA SCROLLBAR (Fin) ======== */
+
+        /* Conteneur principal désactivé pour laisser le contenu "normal" */
+        .content-wrapper {
+            width: 100%;
+            max-width: 700px; 
+            padding: 0 20px;
+        }
+
+        /* Conteneur de la barre de recherche */
+        #searchContainer {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            margin-bottom: 25px;
+            width: 100%;
+            max-width: 500px; /* Limite la largeur de la recherche */
+        }
+        
+        #icaoInput {
+            flex-grow: 1;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #5a5f70; 
+            border-radius: 8px;
+            background-color: #2b2f3a; /* Champ sombre */
+            color: white;
+            transition: border-color 0.3s;
+        }
+        #icaoInput:focus {
+            border-color: #007bff; 
+            outline: none;
+        }
+        
+        /* Bouton de recherche (icône blanche seule) */
+        #btnAtis {
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            background-color: #4a4f60; /* Couleur sombre */
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        #btnAtis:hover {
+            background-color: #5a5f70;
+        }
+
+        #btnAtis .material-icons {
+             color: white; /* Icône de recherche en blanc */
+        }
+
+        /* Style des résultats ATIS - Affichage normal (pas de boîte) */
+        #atisResult {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 20px;
+            padding: 0; /* Pas de padding/bordure pour un affichage "normal" */
+            white-space: pre-wrap;
+            line-height: 1.6;
+            text-align: left; 
+            min-height: 50px; /* Garde une hauteur minimale pour le contenu */
+            font-size: 0.95em;
+        }
+
+        /* Cacher la réponse de Mistral */
+        #mistralResult {
+            display: none; 
+        }
+
+        /* Style de la section Play/Stop */
+        .read-section {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Alignement à gauche avec le reste du contenu */
+            gap: 15px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 700px; 
+        }
+        
+        #btnPlay {
+            background: #4a4f60; /* Gris foncé pour le bouton */
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 55px;
+            height: 55px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        #btnPlay:hover {
+            background: #5a5f70;
+            transform: scale(1.05);
+        }
+        #btnPlay .material-icons {
+            font-size: 30px;
+            color: white; /* Icône Play/Stop en blanc */
+        }
+        
+        #loadingText {
+            font-style: italic;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="content-wrapper">
+        <label for="icaoInput" style="display: block; margin-bottom: 10px; font-weight: bold;">Code OACI de l'Aéroport :</label>
+        <div id="searchContainer">
+            <input type="text" id="icaoInput" placeholder="ex: LFPG, LEBG, LOWW" maxlength="4" />
+            <button id="btnAtis"><i class="material-icons">search</i></button>
+        </div>
+
+        <div id="atisResult">
+            Entrez un code OACI ci-dessus pour obtenir les informations ATIS.
+        </div>
+
+        <div class="read-section">
+            <button id="btnPlay" style="display: none;"><i class="material-icons" id="playIcon">play_arrow</i></button>
+            <span id="loadingText" style="display: none;">Recherche et préparation de l'ATIS en cours...</span>
+        </div>
+    </div>
+
+    <div id="mistralResult"></div>
+
+<script>
+    // ATTENTION : Remplacez par votre propre clé API Mistral pour utiliser cette fonctionnalité.
+    const MISTRAL_API_KEY = "xS8Z85OqsLjduGNwjHm3EgLXFjuCQFSz"; 
+
+    let enVoice = null;
+    let generatedText = ""; 
+    const btnPlay = document.getElementById('btnPlay');
+    const playIcon = document.getElementById('playIcon');
+    const loadingText = document.getElementById('loadingText');
+
+    // Chargement des voix et recherche d'une voix anglaise professionnelle
+    function loadVoices() {
+        const voices = speechSynthesis.getVoices();
+        // Tente de trouver une voix anglaise professionnelle de Google (Male UK)
+        enVoice = voices.find(v => 
+            v.name.includes("Google") && 
+            v.lang.startsWith("en-GB") && 
+            v.name.toLowerCase().includes("male")
+        );
+        
+        // Sinon, prend la première voix anglaise trouvée
+        if (!enVoice) {
+            enVoice = voices.find(v => v.lang.startsWith("en")) || voices[0];
+            console.log("Voix anglaise professionnelle non trouvée, voix par défaut :", enVoice ? enVoice.name : "aucune");
+        } else {
+            console.log("Voix anglaise trouvée :", enVoice.name);
+        }
+    }
+
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    } else {
+        setTimeout(loadVoices, 1000);
+    }
+    loadVoices();
+
+    // Fonction pour gérer le Play/Stop
+    function toggleSpeech() {
+        if (window.speechSynthesis.speaking) {
+            // Si c'est en cours de lecture, annuler (STOP)
+            window.speechSynthesis.cancel();
+            playIcon.textContent = 'play_arrow'; // Changer l'icône en Play
+        } else if (generatedText) {
+            // Si ce n'est pas en cours, et qu'il y a du texte, lancer la lecture (PLAY)
+            speak(generatedText);
+        }
+    }
+
+    async function processAtis() {
+        const icao = document.getElementById("icaoInput").value.trim().toUpperCase();
+        const atisDiv = document.getElementById("atisResult");
+        const mistralDiv = document.getElementById("mistralResult");
+
+        atisDiv.innerHTML = `🔄 Recherche de l'ATIS en cours pour <b>${icao}</b>...`; 
+        mistralDiv.innerHTML = "";
+        btnPlay.style.display = 'none';
+        loadingText.style.display = 'none';
+        playIcon.textContent = 'play_arrow';
+        window.speechSynthesis.cancel(); // Annuler toute lecture précédente
+
+        if (!icao.match(/^[A-Z]{4}$/)) {
+            atisDiv.innerHTML = `❌ Code OACI invalide. Ex : LFPG`;
+            return;
+        }
+
+        try {
+            // 1. Récupérer ATIS IVAO
+            const response = await fetch("https://api.ivao.aero/v2/tracker/whazzup");
+            if (!response.ok) throw new Error("Erreur chargement IVAO : " + response.status);
+            const data = await response.json();
+
+            const atcs = data.clients.atcs || [];
+            const matchingAtis = atcs.filter(atc =>
+                atc.callsign.startsWith(icao) && atc.atis?.lines?.length > 0
+            );
+
+            if (matchingAtis.length === 0) {
+                atisDiv.innerHTML = `❌ Aucun ATIS actif trouvé pour <b>${icao}</b>.`;
+                return;
+            }
+
+            const atc = matchingAtis[0];
+            const callsign = atc.callsign;
+            const position = atc.atcSession?.position || 'Position inconnue';
+            const freq = atc.atcSession?.frequency?.toFixed(3) || '???';
+            const revision = atc.atis.revision;
+            const timestamp = new Date(atc.atis.timestamp).toLocaleString();
+
+            const cleanedLines = atc.atis.lines
+                .map(line => line
+                    .replace(/https?:\/\/[^\s]+/gi, '')     
+                    .replace(/ts-[\w.-]+\.ivao\.aero/gi, '')
+                    .trim()
+                )
+                .filter(line => line.length > 0);
+
+            atisDiv.innerHTML = `
+                <p>📡 <b>${callsign}</b> — ${position}<br>
+                Fréquence : ${freq} MHz<br>
+                Révision : ${revision} — ${timestamp}</p>
+                <hr style="border-color: #5a5f70;">
+                <b>ATIS BRUT :</b><br>
+                ${cleanedLines.join('<br>')}
+            `;
+
+            const rawAtisText = cleanedLines.join(" ");
+
+            // Indiquer que l'IA travaille (texte modifié)
+            loadingText.style.display = 'inline';
+            
+            // 2. Appel API Mistral Chat Completion
+            const mistralResponse = await fetch("https://api.mistral.ai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${MISTRAL_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "mistral-medium",
+                    messages: [
+                        { role: "system", content: `You are an assistant who reformulates technical ATIS text into a natural, fluent narrative voice message. You must answer in English. Do not include introductory text like "here is an oral and narrative version". Provide an explanation of how to interpret and read the message. Keep it short, fluent, and put the information in the correct order. Example: "Good day, this is LFPG, information Bravo, recorded at 0700 UTC. ILS approach runway 30 Right. Runways in use 30 Right and 30 Left. Transition level at FL 060. Wind 320 degrees, 14 knots. Current weather CAVOK. Temperature 28°C, dew point 9°C. QNH 1008. Inform LFPG on first contact that you have received information Bravo." Crucially, do not include any introductory phrases like "To be read in a professional tone..." and do not use any asterisks (*) anywhere in the final text.` },
+                        { role: "user", content: `Raw ATIS text: ${rawAtisText}\n\nConvert this text into a narrative voice message, without abbreviations. Respond in English.` }
+                    ],
+                    max_tokens: 256
+                })
+            });
+
+            if (!mistralResponse.ok) throw new Error("Erreur API Mistral : " + mistralResponse.status);
+
+            const mistralData = await mistralResponse.json();
+            
+            // Stocke la réponse de Mistral et nettoie les astérisques
+            generatedText = (mistralData.choices?.[0]?.message?.content || "").replace(/\*/g, '').trim();
+
+            // Mettre le texte dans la div cachée (pour vérification)
+            mistralDiv.innerHTML = generatedText; 
+
+            // Afficher le bouton Play et masquer le texte de chargement
+            loadingText.style.display = 'none';
+            btnPlay.style.display = 'flex';
+
+            // 3. Lancer la lecture vocale automatiquement après avoir généré le texte
+            speak(generatedText);
+
+        } catch (err) {
+            atisDiv.innerHTML = `⚠️ Erreur : ${err.message}. Veuillez réessayer avec un autre code.`;
+            loadingText.style.display = 'none';
+            btnPlay.style.display = 'none';
+        }
+    }
+
+    function speak(text) {
+        const voiceToUse = enVoice; 
+
+        if (!voiceToUse) {
+            console.warn("Aucune voix anglaise professionnelle n'est disponible. Tentative d'utiliser la première voix disponible.");
+        }
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Bip VHF (début ou fin)
+        function playBeep(freq, duration) {
+            return new Promise(resolve => {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+
+                oscillator.type = "sine";
+                oscillator.frequency.value = freq;
+
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01); 
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + duration);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+                oscillator.onended = () => resolve();
+            });
+        }
+
+        // Générateur de bruit VHF plus prononcé
+        function createVhfNoise() {
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = (Math.random() * 2 - 1) * 0.4;
+            }
+
+            const whiteNoise = audioCtx.createBufferSource();
+            whiteNoise.buffer = noiseBuffer;
+            whiteNoise.loop = true;
+
+            // Filtres
+            const bandpass = audioCtx.createBiquadFilter();
+            bandpass.type = "bandpass";
+            bandpass.frequency.value = 1500;
+            bandpass.Q.value = 0.8;
+
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.value = 0.15;
+
+            // chaîne audio
+            whiteNoise.connect(bandpass);
+            bandpass.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            return { source: whiteNoise, gain: gainNode };
+        }
+
+        async function run() {
+            // Mettre l'icône sur STOP
+            playIcon.textContent = 'stop'; 
+
+            await playBeep(800, 0.15); // bip début
+
+            const vhfNoise = createVhfNoise();
+            vhfNoise.source.start();
+
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.voice = voiceToUse; 
+            utter.lang = voiceToUse ? voiceToUse.lang : "en-US"; 
+            utter.rate = 0.95;
+            utter.pitch = 1.0;
+            utter.volume = 1.0;
+
+            const synthEnd = new Promise(resolve => {
+                utter.onend = () => {
+                    playIcon.textContent = 'play_arrow'; // Revenir à Play après la fin
+                    resolve();
+                };
+                utter.onerror = (e) => {
+                    console.error('SpeechSynthesisError:', e);
+                    playIcon.textContent = 'play_arrow';
+                    resolve();
+                };
+            });
+
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utter);
+
+            await synthEnd;
+
+            vhfNoise.source.stop();
+
+            await playBeep(1000, 0.15); // bip fin
+        }
+
+        if (audioCtx.state === "suspended") {
+            audioCtx.resume().then(run);
+        } else {
+            run();
+        }
+    }
+
+    // Ajout écouteurs click
+    document.getElementById('btnAtis').addEventListener('click', processAtis);
+    document.getElementById('btnPlay').addEventListener('click', toggleSpeech);
+
+</script>
+
+</body>
+</html>

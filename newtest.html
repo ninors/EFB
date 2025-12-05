@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link rel="icon" type="image/png" href="ico.png">
+<title>EFB HIP FLIGHT</title>
+
+<style>
+/* ===== STYLE GLOBAL ===== */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #33384b;
+    color: white;
+    height: 100%;
+    overflow: hidden; /* pas de scroll général */
+}
+
+/* ===== WRAPPER POUR CENTRAGE ===== */
+.wrapper {
+    display: flex;
+    justify-content: center;   /* centre horizontalement */
+    align-items: center;       /* centre verticalement */
+    height: 100vh;             /* prend toute la hauteur visible */
+    width: 100vw;
+    overflow: hidden;
+}
+
+/* ===== CONTENEUR PRINCIPAL (app) ===== */
+.container {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    grid-template-rows: 60px auto;
+    width: 95vw;
+    height: 92vh;          /* ajustable : hauteur sans scroll */
+    max-width: 1750px;
+    border-radius: 18px;
+    overflow: hidden;
+    background-color: #33384b;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0,0,0,0.45);
+}
+
+/* ===== BARRE SUPÉRIEURE ===== */
+.topbar {
+    grid-column: 1 / 3;
+    background-color: #2b2f3a;
+    display: flex;
+    align-items: center;
+    padding-left: 28px;
+    font-size: 1.25em;
+    font-weight: bold;
+    color: #8b8f9a;
+    cursor: pointer;
+    height: 60px;
+}
+
+/* ===== BARRE LATÉRALE ===== */
+.sidebar {
+    background-color: #2b2f3a;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 0;
+    grid-row: 2 / 3;
+    width: 80px;
+}
+
+/* ===== ICONES ===== */
+.icon-menu {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.icon-top, .icon-middle, .icon-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 26px;
+}
+
+.icon {
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.icon .material-icons {
+    font-size: 38px;
+    color: white;
+}
+
+/* ===== CONTENU PRINCIPAL ===== */
+.content {
+    background-color: #33384b;
+    border-radius: 12px;
+    margin: 18px;
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    height: calc(100% - 36px);
+}
+
+.iframe-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 12px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overflow-y: auto;
+}
+iframe::-webkit-scrollbar { display: none; }
+
+/* ===== MODALE ===== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0; top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: #2b2f3a;
+    color: white;
+    border-radius: 16px;
+    margin: 5% auto;
+    padding: 20px 20px 0 20px;
+    width: 87%;
+    max-width: 950px;
+    height: 68vh;
+    position: relative;
+    box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-content iframe {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    width: 100%;
+}
+
+.close-btn-modal {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 28px;
+    color: white;
+    cursor: pointer;
+    z-index: 10;
+}
+.close-btn-modal:hover { color: red; }
+
+/* ===== MODE PORTRAIT TABLETTE ===== */
+@media (orientation: portrait) {
+    .container {
+        width: 97vw;
+        height: 84vh; /* légèrement plus haute pour portrait */
+        grid-template-columns: 70px 1fr;
+        grid-template-rows: 55px auto;
+    }
+    .topbar {
+        font-size: 1.1em;
+        padding-left: 20px;
+    }
+    .icon .material-icons {
+        font-size: 34px;
+    }
+}
+</style>
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="topbar" onclick="openModal()">Settings - flyPad</div>
+
+      <div class="sidebar">
+        <div class="icon-menu">
+          <div class="icon"><a href="page1.html"><span class="material-icons" style="color:#800000;">airlines</span></a></div>
+          <div class="icon"><a href="page2.html"><span class="material-icons">receipt</span></a></div>
+          <div class="icon"><a href="page3.html"><span class="material-icons">map</span></a></div>
+          <div class="icon"><a href="page4.html"><span class="material-icons">checklist</span></a></div>
+          <div class="icon"><a href="page5.html"><span class="material-icons">apps</span></a></div>
+          <div class="icon"><a href="page6.html"><span class="material-icons">airplane_ticket</span></a></div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="iframe-container">
+          <iframe src="iframe1.html"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <span class="material-icons close-btn-modal" onclick="closeModal()">keyboard_arrow_up</span>
+      <iframe src="settings.html" title="Paramètres FlyPad"></iframe>
+    </div>
+  </div>
+
+<script>
+function openModal() {
+    document.getElementById('settingsModal').style.display = 'block';
+}
+function closeModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+window.onclick = function(e) {
+    const modal = document.getElementById('settingsModal');
+    if (e.target === modal) closeModal();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>ChartFox Viewer — Outils de Dessin</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#2b2f3a; --panel:#394259; --muted:#999; --accent:#800000;
+  --card:#2d3447; --card-hover:#4c4e60; --fav-bg:#4c4e60; --fav-hover:#63657d;
+  --color-blue: #007bff;
+  --color-red: #dc3545;
+  --color-yellow: #FFD700;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; height:100vh; display:flex; font-family:Arial, sans-serif;
+  background:var(--bg); color:#fff; overflow:hidden;
+}
+
+/* Left panel */
+#left-panel{
+  width:36%; min-width:300px; max-width:520px;
+  background:var(--panel); padding:20px;
+  display:flex; flex-direction:column;
+  border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  margin:20px; overflow:hidden;
+}
+#left-panel.collapsed .content-hide-on-collapse{ display:none; }
+#left-panel input, #left-panel button{
+  width:100%; padding:12px; border-radius:10px; border:none; margin-bottom:12px; font-size:14px;
+}
+#left-panel input{ background:#2d3447; color:#fff; }
+#left-panel button{ background:var(--accent); color:#fff; cursor:pointer; font-weight:bold; transition:background 0.3s; }
+#left-panel button:hover{ background:#800000; }
+
+.tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.tab{
+  padding:8px 12px; background:var(--card); border-radius:10px 10px 0 0;
+  cursor:pointer; border:1px solid #2d3447; user-select:none; font-size:13px; transition:background 0.3s;
+}
+.tab.active{ background:var(--panel); color:var(--accent); border-color:var(--accent); font-weight:600; }
+
+#charts-container{
+  flex:1; overflow-y:auto; margin-top:12px; padding-right:4px;
+  max-height: calc(100vh - 160px);
+}
+.chart-box{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--card); padding:12px; border-radius:10px; margin-bottom:12px; cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,0.2); transition:background 0.3s;
+}
+.chart-box:hover{ background:var(--card-hover); }
+.chart-title{ flex:1; padding-right:8px; font-size:14px; color:#fff; }
+
+.material-symbols-outlined{
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-family: 'Material Symbols Outlined';
+  font-size:20px; color:#e3e3e3; cursor:pointer; user-select:none;
+}
+
+#right-panel{ flex:1; display:flex; flex-direction:column; min-width:0; margin:20px; }
+#fav-tabs{
+  display:flex; gap:10px; padding:12px; background:#20222b; border-radius:12px; border-bottom:1px solid #2b2b2b;
+  overflow:auto; align-items:center;
+}
+.fav-tab{
+  position: relative; background: var(--fav-bg); color: #fff;
+  padding: 8px 26px 8px 12px; border-radius: 10px; white-space: nowrap; cursor: pointer; font-size: 13px;
+}
+.fav-tab:hover{ background: var(--fav-hover); }
+.fav-tab .close{
+  position:absolute; right:6px; top:6px; width:16px; height:16px; line-height:16px;
+  text-align:center; border-radius:50%; background:transparent; color:#fff !important;
+  font-weight:700; font-size:12px; display:none; cursor:pointer;
+}
+.fav-tab:hover .close{ display:inline-block; background: rgba(0,0,0,0.25); color:#fff !important; }
+
+#pdf-toolbar{
+  display:flex; align-items:center; gap:8px; padding:12px; background:var(--card); border-radius:10px; margin-bottom:12px; flex-shrink:0;
+}
+#pdf-toolbar .btn{
+  display:inline-flex; align-items:center; justify-content:center; min-width:40px; height:40px;
+  border-radius:10px; background:transparent; border:none; cursor:pointer; color:#fff; transition:background 0.3s, color 0.3s;
+}
+#pdf-toolbar .btn:hover{ background:#4c4e60; color:var(--accent); }
+/* Classe pour les boutons actifs (Dessin, Couleurs, etc.) */
+#pdf-toolbar .btn.active { 
+    background:var(--accent); 
+    color:#fff; 
+    border: 1px solid #fff; 
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+} 
+
+#pdf-toolbar .pageinfo{ flex:1; text-align:center; color:var(--muted); font-size:13px; }
+
+/* STYLE DES OUTILS DE DESSIN */
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+.color-swatch.active {
+    border-color: #fff; /* Met en évidence la couleur sélectionnée */
+    transform: scale(1.1);
+}
+.color-swatch[data-color="#007bff"] { background-color: var(--color-blue); }
+.color-swatch[data-color="#dc3545"] { background-color: var(--color-red); }
+.color-swatch[data-color="#FFD700"] { background-color: var(--color-yellow); }
+
+
+/* ZONE CANVAS CRITIQUE */
+#pdf-canvas {
+  flex:1; background:#1f212a;
+  display:flex; align-items:flex-start; justify-content:flex-start;
+  padding:16px; border-radius:12px; overflow:auto; /* Scroll ici */
+  position: relative;
+}
+
+/* Le wrapper qui contient les deux canvas superposés */
+.canvas-wrap {
+  position: relative; 
+  display: inline-block; /* S'adapte à la taille du contenu (canvas) */
+  line-height: 0; /* Évite les espaces fantômes sous le canvas */
+}
+
+/* Le PDF en dessous */
+#the-canvas {
+  display: block;
+  /* z-index par défaut 0 */
+}
+
+/* Le Dessin au dessus */
+#drawing-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 50; /* Au dessus du PDF */
+  pointer-events: none; /* Par défaut, laisse passer les clics vers le PDF (pour le drag) */
+  cursor: default; /* Changé au survol si dessin actif */
+}
+
+/* Quand on est en mode dessin, on active les événements souris sur le canvas de dessin */
+.drawing-active #drawing-canvas {
+  pointer-events: auto; 
+  cursor: crosshair;
+}
+
+
+#left-toggle{ background:transparent; border:none; cursor:pointer; opacity:0.6; transition:opacity 0.2s ease; }
+#left-toggle:hover{ opacity:1; }
+#left-panel.collapsed #left-toggle svg{ transform:rotate(180deg); }
+
+@media(max-width:900px){
+  #left-panel{ width:42%; }
+  #left-toggle{ right:-12px; }
+}
+::-webkit-scrollbar{ width:6px; height:6px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background-color: rgba(255,255,255,0.3); border-radius:3px; border:1px solid rgba(255,255,255,0.1); }
+::-webkit-scrollbar-thumb:hover{ background-color: rgba(255,255,255,0.5); }
+#left-panel.collapsed {
+  width: 28px !important; min-width: 28px !important; max-width: 28px !important;
+  padding: 0 !important; margin: 20px 0 20px 20px; overflow: hidden;
+}
+#left-panel.collapsed .tabs, #left-panel.collapsed #charts-container,
+#left-panel.collapsed input, #left-panel.collapsed button { display: none; }
+#left-panel.collapsed #left-toggle { position: absolute; top: 20px; right: -12px; opacity: 1; }
+
+body.dark-mode #the-canvas { filter: invert(1) hue-rotate(180deg) brightness(0.9); }
+</style>
+</head>
+
+<body>
+<div id="left-panel">
+  <div class="content-hide-on-collapse">
+    <input id="icao" placeholder="Code OACI (ex: LFPG)" />
+    <button id="search">Rechercher</button>
+    <div id="tabs" class="tabs"></div>
+    <div id="charts-container" class="charts-list"></div>
+  </div>
+</div>
+
+<div id="right-panel">
+  <div id="fav-tabs"></div>
+
+  <div id="pdf-toolbar">
+    <button class="btn" id="left-toggle" title="Réduire le menu">
+      <span class="material-symbols-outlined">shadow_minus</span>
+    </button>
+    <button class="btn" id="toggle-dark" title="Mode sombre">
+      <span class="material-symbols-outlined">dark_mode</span>
+    </button>
+    <div style="width:1px; height:24px; background:#444; margin:0 8px;"></div>
+    
+    <div id="drawing-controls" style="display: flex; gap: 8px; align-items: center;">
+        <div class="color-swatch active" data-color="#FFD700" title="Jaune" id="color-yellow"></div>
+        <div class="color-swatch" data-color="#007bff" title="Bleu" id="color-blue"></div>
+        <div class="color-swatch" data-color="#dc3545" title="Rouge" id="color-red"></div>
+        
+        <button class="btn" id="line-tool-toggle" title="Activer/Désactiver le dessin">
+          <span class="material-symbols-outlined">edit_note</span>
+        </button>
+        
+        <button class="btn" id="clear-drawing" title="Effacer tout le dessin">
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+    </div>
+    <div style="width:1px; height:24px; background:#444; margin:0 8px;"></div>
+    <button class="btn" id="prev-page">◀</button>
+    <button class="btn" id="next-page">▶</button>
+    <div class="pageinfo">Page <span id="page-num">1</span> / <span id="page-count">--</span></div>
+    <button class="btn" id="zoom-out">−</button>
+    <button class="btn" id="zoom-in">+</button>
+    <button class="btn" id="rotate">⤵</button>
+  </div>
+
+  <div id="pdf-canvas">
+    <div class="canvas-wrap" id="canvas-wrapper">
+      <canvas id="the-canvas"></canvas>
+      <canvas id="drawing-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+/* ---------- CONFIGURATION ---------- */
+const CLIENT_ID = "9f946a22-0dc6-4027-a66e-9678e653c478";
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+const SCOPE = "charts:view charts:index charts:files";
+
+/* ---------- DOM ELEMENTS ---------- */
+const icaoInput = document.getElementById('icao');
+const searchBtn = document.getElementById('search');
+const tabsEl = document.getElementById('tabs');
+const chartsContainer = document.getElementById('charts-container');
+const favTabsEl = document.getElementById('fav-tabs');
+const canvas = document.getElementById('the-canvas'); // PDF Canvas
+const ctx = canvas.getContext('2d');
+const pdfContainer = document.getElementById('pdf-canvas'); // Scrollable container
+const pageNumEl = document.getElementById('page-num');
+const pageCountEl = document.getElementById('page-count');
+const leftPanel = document.getElementById('left-panel');
+const leftToggle = document.getElementById('left-toggle');
+const darkBtn = document.getElementById('toggle-dark');
+
+/* ---------- DRAWING DOM ELEMENTS ---------- */
+const drawingCanvas = document.getElementById('drawing-canvas');
+const drawingCtx = drawingCanvas.getContext('2d');
+const canvasWrapper = document.getElementById('canvas-wrapper');
+
+// Nouveaux boutons de dessin
+const lineToolToggle = document.getElementById('line-tool-toggle');
+const clearDrawingBtn = document.getElementById('clear-drawing');
+const colorSwatches = document.querySelectorAll('.color-swatch');
+
+
+/* ---------- STATE ---------- */
+let pdfDoc = null, pageNum = 1, scale = 1.2, rotation = 0;
+let pageRendering = false, pageNumPending = null;
+let currentMeta = null; 
+let ivaoDataCache = null; 
+let lastIvaoFetch = 0; 
+let currentChartUrl = null;
+
+// Drawing State
+let isDrawingMode = false;
+let isDrawing = false;
+// Couleur initiale
+let currentStrokeColor = '#FFD700'; 
+let currentDrawingData = []; // Stocke des ratios {x: 0.5, y: 0.5, color: '#...' }
+let currentStroke = [];
+
+/* ---------- LOCAL STORAGE KEYS ---------- */
+const LS_ICAO = 'chart_lastICAO_v1';
+const LS_FAVS = 'chart_favs_v1';
+const LS_LAST_PDF = 'chart_lastPDF_v1';
+const LS_DRAWINGS = 'chart_drawings_v2'; // Changé la version pour inclure la couleur
+
+
+/* ---------- UTILS ---------- */
+function saveLastICAO(icao){ try{ localStorage.setItem(LS_ICAO, icao); }catch(e){} }
+function loadLastICAO(){ try{ return localStorage.getItem(LS_ICAO)||''; }catch(e){ return ''; } }
+function loadFavs(){ try{ return JSON.parse(localStorage.getItem(LS_FAVS)||'[]'); }catch(e){ return []; } }
+function saveFavs(favs){ try{ localStorage.setItem(LS_FAVS, JSON.stringify(favs)); }catch(e){} }
+
+/* ---------- DRAWING STORAGE ---------- */
+function loadDrawing(url) {
+    try {
+        const all = JSON.parse(localStorage.getItem(LS_DRAWINGS) || '{}');
+        return all[url] || [];
+    } catch (e) { return []; }
+}
+function saveDrawing(url, data) {
+    if(!url) return;
+    try {
+        const all = JSON.parse(localStorage.getItem(LS_DRAWINGS) || '{}');
+        all[url] = data;
+        localStorage.setItem(LS_DRAWINGS, JSON.stringify(all));
+    } catch (e) {}
+}
+
+/* ---------- IVAO & GEO (LOGIQUE INCHANGÉE) ---------- */
+async function fetchIVAOPlanes() {
+    const now = Date.now();
+    if (ivaoDataCache && (now - lastIvaoFetch < 30000)) return ivaoDataCache;
+    try {
+        const response = await fetch('https://api.ivao.aero/v2/tracker/whazzup');
+        if (!response.ok) return [];
+        const data = await response.json();
+        ivaoDataCache = data?.clients?.pilots || [];
+        lastIvaoFetch = now;
+        return ivaoDataCache;
+    } catch (e) { return []; }
+}
+function lonLatToEPSG3857(lon, lat) {
+    const x = lon * 20037508.34 / 180;
+    let y = Math.log(Math.tan((90 + lat) * Math.PI / 360)) / (Math.PI / 180);
+    y = y * 20037508.34 / 180;
+    return [x, y];
+}
+function worldToChart(xWorld, yWorld, meta, canvasHeight) {
+    const xWorldTrans = xWorld - meta.tx;
+    const yWorldTrans = yWorld - meta.ty;
+    const kLocal = meta.k / canvasHeight;
+    const cosA = Math.cos(meta.transform_angle);
+    const sinA = Math.sin(meta.transform_angle);
+    const xChart = (1 / kLocal) * (cosA * xWorldTrans + sinA * yWorldTrans);
+    const yChart = (1 / kLocal) * (sinA * xWorldTrans - cosA * yWorldTrans);
+    return { x: xChart, y: yChart };
+}
+
+async function drawPlanes(meta) {
+    if (!meta || meta.tx == null) return;
+    const planes = await fetchIVAOPlanes();
+    const canvasW = canvas.width;
+    const canvasH = canvas.height;
+    const effRot = (rotation - (meta.pdf_rotation_angle||0) + 360) % 360;
+
+    planes.forEach(p => {
+        if (p.latitude == null || p.longitude == null) return;
+        const [xW, yW] = lonLatToEPSG3857(p.longitude, p.latitude);
+        const { x: rX, y: rY } = worldToChart(xW, yW, meta, canvasH);
+        let fX, fY;
+        
+        switch (effRot) {
+            case 90: fX=(1-rY)*canvasW; fY=rX*canvasH; break;
+            case 180: fX=(1-rX)*canvasW; fY=(1-rY)*canvasH; break;
+            case 270: fX=rY*canvasW; fY=(1-rX)*canvasH; break;
+            default: fX=rX*canvasW; fY=rY*canvasH;
+        }
+
+        if (fX<0 || fX>canvasW || fY<0 || fY>canvasH) return;
+
+        ctx.save();
+        ctx.fillStyle = "rgba(255, 0, 0, 0.7)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+        ctx.beginPath(); ctx.arc(fX, fY, 5, 0, Math.PI * 2); 
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+    });
+}
+
+/* ---------- DRAWING LOGIC ---------- */
+function syncDrawingCanvas() {
+    // 1. Force la taille du canvas de dessin à être EXACTEMENT celle du PDF
+    drawingCanvas.width = canvas.width;
+    drawingCanvas.height = canvas.height;
+    drawingCanvas.style.width = canvas.style.width;
+    drawingCanvas.style.height = canvas.style.height;
+
+    // 2. Redessine tous les traits enregistrés à la nouvelle échelle
+    redrawStoredStrokes();
+}
+
+function redrawStoredStrokes() {
+    drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
+
+    const w = drawingCanvas.width;
+    const h = drawingCanvas.height;
+
+    currentDrawingData.forEach(stroke => {
+        if (stroke.length < 1) return;
+        
+        // La couleur est stockée dans le premier point de la ligne
+        const strokeColor = stroke[0].color || '#FFD700'; 
+        
+        drawingCtx.beginPath();
+        drawingCtx.lineWidth = 3;
+        drawingCtx.strokeStyle = strokeColor;
+        
+        drawingCtx.moveTo(stroke[0].x * w, stroke[0].y * h);
+        for (let i = 1; i < stroke.length; i++) {
+            drawingCtx.lineTo(stroke[i].x * w, stroke[i].y * h);
+        }
+        drawingCtx.stroke();
+    });
+}
+
+function getRatioCoords(e) {
+    const rect = drawingCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    return {
+        x: x / rect.width,
+        y: y / rect.height
+    };
+}
+
+function startDraw(e) {
+    if (!isDrawingMode) return;
+    isDrawing = true;
+    currentStroke = [];
+    const p = getRatioCoords(e);
+    
+    // Ajout de la couleur au premier point du tracé
+    p.color = currentStrokeColor;
+    currentStroke.push(p);
+    
+    // Dessin visuel immédiat
+    const w = drawingCanvas.width;
+    const h = drawingCanvas.height;
+    
+    drawingCtx.beginPath();
+    drawingCtx.lineWidth = 3;
+    drawingCtx.lineCap = 'round';
+    drawingCtx.strokeStyle = currentStrokeColor;
+    drawingCtx.moveTo(p.x * w, p.y * h);
+    drawingCtx.lineTo(p.x * w, p.y * h); // Point
+    drawingCtx.stroke();
+}
+
+function drawMove(e) {
+    if (!isDrawing) return;
+    const p = getRatioCoords(e);
+    // Les points suivants n'ont pas besoin de stocker la couleur (sauf le premier)
+    currentStroke.push(p); 
+
+    const w = drawingCanvas.width;
+    const h = drawingCanvas.height;
+
+    // On continue le chemin
+    drawingCtx.lineTo(p.x * w, p.y * h);
+    drawingCtx.stroke();
+}
+
+function stopDraw() {
+    if (!isDrawing) return;
+    isDrawing = false;
+    if (currentStroke.length > 0) {
+        currentDrawingData.push(currentStroke);
+        saveDrawing(currentChartUrl, currentDrawingData);
+    }
+    drawingCtx.beginPath(); // Reset path pour ne pas relier au prochain trait
+}
+
+function clearDrawing() {
+    if (confirm("Êtes-vous sûr de vouloir effacer tout le dessin sur cette carte ?")) {
+        currentDrawingData = [];
+        saveDrawing(currentChartUrl, []);
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        alert("Dessin effacé.");
+    }
+}
+
+
+/* ---------- PDF RENDER (LOGIQUE INCHANGÉE) ---------- */
+function renderPage(num){
+    if (pageRendering) { pageNumPending = num; return; }
+    pageRendering = true;
+    
+    pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({scale, rotation});
+        const outputScale = window.devicePixelRatio || 1;
+
+        canvas.width = Math.round(viewport.width * outputScale);
+        canvas.height = Math.round(viewport.height * outputScale);
+        canvas.style.width = Math.round(viewport.width) + 'px';
+        canvas.style.height = Math.round(viewport.height) + 'px';
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+            transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
+        };
+
+        page.render(renderContext).promise.then(async () => {
+            pageRendering = false;
+            
+            // Une fois le PDF dessiné, on redimensionne le canvas de dessin
+            syncDrawingCanvas(); 
+
+            if(currentMeta) await drawPlanes(currentMeta);
+            if(pageNumPending !== null){ renderPage(pageNumPending); pageNumPending=null; }
+        });
+        pageNumEl.textContent = num;
+    });
+}
+
+function queueRenderPage(num){ pageRendering ? pageNumPending=num : renderPage(num); }
+function doZoomIn(){ if(pdfDoc){ scale=+(scale+0.2).toFixed(2); queueRenderPage(pageNum); } }
+function doZoomOut(){ if(pdfDoc && scale>0.4){ scale=+(scale-0.2).toFixed(2); queueRenderPage(pageNum); } }
+function doRotate(){ if(pdfDoc){ rotation=(rotation+90)%360; queueRenderPage(pageNum); } }
+function prevPage(){ if(pdfDoc && pageNum>1){ pageNum--; queueRenderPage(pageNum); } }
+function nextPage(){ if(pdfDoc && pageNum<pdfDoc.numPages){ pageNum++; queueRenderPage(pageNum); } }
+
+/* ---------- PAN LOGIC (DRAG) (LOGIQUE INCHANGÉE) ---------- */
+let isDragging = false, dragStart = {x:0,y:0}, scrollStart = {left:0,top:0};
+pdfContainer.addEventListener('mousedown', e => {
+    // Si on est en mode dessin, on ne pan PAS
+    if(isDrawingMode) return;
+    
+    isDragging=true;
+    dragStart={x:e.clientX,y:e.clientY};
+    scrollStart={left:pdfContainer.scrollLeft,top:pdfContainer.scrollTop};
+    pdfContainer.style.cursor='grabbing'; 
+    e.preventDefault();
+});
+window.addEventListener('mouseup', () => { isDragging=false; if(!isDrawingMode) pdfContainer.style.cursor=''; });
+window.addEventListener('mousemove', e => {
+    if(!isDragging) return;
+    pdfContainer.scrollLeft = scrollStart.left - (e.clientX-dragStart.x);
+    pdfContainer.scrollTop = scrollStart.top - (e.clientY-dragStart.y);
+});
+pdfContainer.addEventListener('wheel', e => {
+    if(isDrawingMode) return; 
+    if(e.ctrlKey){ e.preventDefault(); e.deltaY>0 ? doZoomOut() : doZoomIn(); }
+}, {passive:false});
+
+
+/* ---------- MODE DESSIN ET SÉLECTION COULEUR ---------- */
+
+// Fonction pour définir la couleur active
+function setActiveColor(color) {
+    currentStrokeColor = color;
+    colorSwatches.forEach(swatch => {
+        swatch.classList.toggle('active', swatch.getAttribute('data-color') === color);
+    });
+    // Si le mode dessin n'est pas actif, on l'active automatiquement
+    if (!isDrawingMode) {
+        toggleDrawingMode(true);
+    }
+}
+
+// Fonction pour basculer le mode dessin
+function toggleDrawingMode(forceState = null) {
+    isDrawingMode = forceState !== null ? forceState : !isDrawingMode;
+    lineToolToggle.classList.toggle('active', isDrawingMode);
+    
+    if(isDrawingMode) {
+        canvasWrapper.classList.add('drawing-active');
+        pdfContainer.style.cursor = 'default';
+        if (!document.querySelector('.color-swatch.active')) {
+             setActiveColor(colorSwatches[0].getAttribute('data-color'));
+        }
+    } else {
+        canvasWrapper.classList.remove('drawing-active');
+        pdfContainer.style.cursor = ''; 
+    }
+}
+
+// Événements
+lineToolToggle.addEventListener('click', () => toggleDrawingMode());
+clearDrawingBtn.addEventListener('click', clearDrawing);
+
+colorSwatches.forEach(swatch => {
+    swatch.addEventListener('click', () => {
+        setActiveColor(swatch.getAttribute('data-color'));
+    });
+});
+
+drawingCanvas.addEventListener('mousedown', startDraw);
+drawingCanvas.addEventListener('mousemove', drawMove);
+window.addEventListener('mouseup', stopDraw);
+
+
+/* ---------- LOAD PDF (LOGIQUE INCHANGÉE) ---------- */
+function loadPDF(url, meta = null){
+    scale = 1.2; rotation = 0; pageNum = 1;
+    currentMeta = meta; currentChartUrl = url;
+    localStorage.setItem(LS_LAST_PDF, url);
+    
+    // Charge les dessins sauvegardés
+    currentDrawingData = loadDrawing(url);
+    
+    // Reset
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    
+    pdfjsLib.getDocument(url).promise.then(pdf=>{
+        pdfDoc = pdf;
+        pageCountEl.textContent = pdf.numPages;
+        queueRenderPage(pageNum);
+    }).catch(err=>alert("Erreur PDF: "+err.message));
+}
+
+/* ---------- INIT & API (LOGIQUE INCHANGÉE) ---------- */
+document.getElementById('prev-page').addEventListener('click', prevPage);
+document.getElementById('next-page').addEventListener('click', nextPage);
+document.getElementById('zoom-in').addEventListener('click', doZoomIn);
+document.getElementById('zoom-out').addEventListener('click', doZoomOut);
+document.getElementById('rotate').addEventListener('click', doRotate);
+
+async function getChartsGroupedByType(icao){
+    const token = localStorage.getItem('access_token');
+    const resp = await fetch(`https://api.chartfox.org/v2/airports/${icao}/charts/grouped`, { headers:{Authorization:`Bearer ${token}`} });
+    return (await resp.json()).data||{};
+}
+async function getChartDetails(id){
+    const token = localStorage.getItem('access_token');
+    const resp = await fetch(`https://api.chartfox.org/v2/charts/${id}`, { headers:{Authorization:`Bearer ${token}`} });
+    return await resp.json(); 
+}
+
+/* Search & Tabs (condensé) */
+searchBtn.addEventListener('click', async ()=>{
+    const icao = icaoInput.value.trim().toUpperCase();
+    if(!icao) return;
+    saveLastICAO(icao);
+    try{
+        const grouped = await getChartsGroupedByType(icao);
+        window.allCharts = grouped;
+        createTabs(grouped);
+        const first = Object.keys(grouped)[0];
+        if(first) setActiveTab(first);
+    }catch(e){ alert(e.message); }
+});
+
+function createTabs(types){
+    tabsEl.innerHTML='';
+    Object.entries(types).forEach(([key,charts])=>{
+        const t=document.createElement('div'); t.className='tab'; t.textContent=charts[0].type_key||key;
+        t.onclick=()=>setActiveTab(key); tabsEl.appendChild(t);
+    });
+}
+function setActiveTab(key){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.textContent.includes(window.allCharts[key][0].type_key)));
+    chartsContainer.innerHTML='';
+    (window.allCharts[key]||[]).forEach(c=>{
+        const b=document.createElement('div'); b.className='chart-box';
+        b.innerHTML=`<div class="chart-title">${c.name}</div><span class="material-symbols-outlined">keep</span>`;
+        b.querySelector('.chart-title').onclick=async()=>{
+            const d=await getChartDetails(c.id);
+            loadPDF(`proxy.php?url=${encodeURIComponent(d.source_url||d.url)}`, d.georef);
+        };
+        b.querySelector('span').onclick=async(e)=>{
+            e.stopPropagation(); const d=await getChartDetails(c.id);
+            addFav(c.name, d.source_url||d.url, d.georef);
+        };
+        chartsContainer.appendChild(b);
+    });
+}
+
+/* OAuth & Init */
+async function handleOAuthRedirect(){
+    const code = new URLSearchParams(window.location.search).get('code');
+    if(code){
+        const verif = localStorage.getItem('code_verifier');
+        const r = await fetch('https://api.chartfox.org/oauth/token', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({grant_type:'authorization_code',code,redirect_uri:REDIRECT_URI,client_id:CLIENT_ID,code_verifier:verif})
+        });
+        const d=await r.json();
+        if(d.access_token) localStorage.setItem('access_token',d.access_token);
+        history.replaceState({},null,REDIRECT_URI);
+        return true;
+    } return false;
+}
+
+window.onload = async ()=>{
+    // Règle la couleur initiale et active son style "active"
+    setActiveColor(currentStrokeColor);
+    
+    // ... (Reste de l'init inchangé)
+    renderFavTabs();
+    const last=loadLastICAO(); if(last) icaoInput.value=last;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    
+    if(!localStorage.getItem('access_token')){
+        if(!await handleOAuthRedirect()){
+             const verifier = "randomstringverifier"; 
+             localStorage.setItem('code_verifier', verifier);
+        }
+    }
+    
+    setInterval(()=>{ if(pdfDoc && currentMeta && !isDrawing) queueRenderPage(pageNum); }, 30000);
+};
+
+async function login(){
+    alert("Token expiré, rechargement...");
+}
+
+leftToggle.addEventListener('click', ()=>leftPanel.classList.toggle('collapsed'));
+darkBtn.addEventListener('click', ()=>document.body.classList.toggle('dark-mode'));
+
+</script>
+</body>
+</html>

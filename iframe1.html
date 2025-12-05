@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analyseur de plan de vol SimBrief</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ======== STYLE GLOBAL ======== */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Arial", sans-serif;
+    background-color: #2b2f3a;
+    color: #ffffff;
+
+    /* ✅ Scroll rétabli pour tactile et desktop */
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+
+    /* ❌ Suppression du flex bloquant */
+    display: block;
+}
+
+/* Masquage propre de la scrollbar sans désactiver le défilement */
+body::-webkit-scrollbar { display: none; }
+body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ======== STRUCTURE ======== */
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1200px;
+    margin: 5px auto;
+}
+
+/* ======== PANELS ======== */
+.panel {
+    flex: 1;
+    min-width: 30px;
+    background-color: #394259;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ======== BLOCS ======== */
+.flight-times {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px dotted #ffffff;
+    padding-bottom: 10px;
+}
+.icon { font-size: 24px; margin: 0 10px; color: #ffffff; }
+
+.info-block {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: #2d3447;
+    border-radius: 8px;
+    position: relative;
+}
+
+.metar-icon {
+    font-family: "Material Symbols Outlined";
+    font-size: 20px;
+    color: #EFEFEF;
+    cursor: pointer;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+}
+.metar-icon:hover { color: #ffffff; }
+
+/* ======== LISTE WAYPOINTS ======== */
+#waypointsList {
+    height: 300px;
+    width: 100%;
+    border-radius: 8px;
+    background-color: #2d3447;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    /* ✅ Scroll actif mais invisible */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+#waypointsList::-webkit-scrollbar { display: none; }
+
+/* ======== MODAL ======== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+.modal-content {
+    background: #2e344e;
+    border-radius: 12px;
+    padding: 20px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    position: relative;
+}
+.modal-content iframe {
+    width: 100%;
+    height: 400px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.close-modal {
+    position: absolute;
+    top: 10px; right: 10px;
+    background: #394259;
+    color: #fff;
+    border: none;
+    font-size: 18px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.close-modal:hover { background: #63657d; }
+
+/* ======== ONGLETS ======== */
+.tab-menu {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    margin-bottom: 8px;
+}
+.tab-menu .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: 8px 8px 0 0;
+    background: #2D3447;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+.tab-menu .tab.active {
+    background: #6b0d0d;
+}
+
+.tab-wrapper { width: 100%; }
+
+.tab-iframe {
+    width: 100%;
+    height: 472px;
+    border: none;
+    border-radius: 12px;
+    display: block;
+}
+/* ======== MASQUER LA SCROLLBAR ======== */
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+    width: 0px;     /* ✅ invisibilité totale */
+    height: 0px;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: none;        /* ✅ cache la scrollbar */
+    -ms-overflow-style: none;     /* ✅ IE/Edge Legacy */
+}
+
+
+/* ======== IFRAMES ======== */
+iframe {
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    overflow: auto; /* ✅ Scroll interne autorisé */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+iframe::-webkit-scrollbar { display: none; }
+</style>
+
+</head>
+
+<body>
+<div class="container">
+    <div class="panel">
+        <div class="flight-times">
+            <span id="departureAirport">Code départ</span>
+            <span class="icon">✈</span>
+            <span id="arrivalAirport">Code arrivée</span>
+        </div>
+
+        <div class="info-block">
+            <p><strong>Informations supplémentaires :</strong></p>
+            <p id="fpType">Type de plan de vol : ...</p>
+            <p id="routeType">Type de route : ...</p>
+            <p id="cruisingAlt">Altitude de croisière : ...</p>
+        </div>
+
+        <div class="info-block">
+            <p><strong id="departureAirportInfo">Aéroport de départ</strong></p>
+            <p id="departureMetar">METAR départ : ...</p>
+            <span class="metar-icon" onclick="openModal('atis.html')">new_window</span>
+            <p id="departureRunway">Piste départ : ...</p>
+        </div>
+
+        <div class="info-block">
+            <p><strong id="arrivalAirportInfo">Aéroport d'arrivée</strong></p>
+            <p id="arrivalMetar">METAR arrivée : ...</p>
+            <span class="metar-icon" onclick="openModal('atis.html')">new_window</span>
+            <p id="arrivalRunway">Piste arrivée : ...</p>
+        </div>
+
+        <div class="info-block">
+            <p>Schématisation vectorielle :</p>
+            <ul id="waypointsList">Récupération des vols Hip Flight</ul> 
+        </div>
+    </div>
+
+    <div class="panel">
+<iframe src="chronom.html" style="height:180px;margin-top:10px;"></iframe>
+
+        <!-- Onglets : remplacent les anciens boutons -->
+        <div class="tab-menu" role="tablist">
+            <div class="tab active" data-target="waypoint.html">Waypoints</div>
+            <div class="tab" data-target="perf.html">Performances</div>
+            <div class="tab" data-target="https://hipflight.fr/ecrans-bord/chat/pilote.html">Discussion</div>
+            <div class="tab" data-target="sign.html">Option 4</div>
+        </div>
+
+        <div class="tab-wrapper">
+            <iframe id="tabIframe" class="tab-iframe" src="option1.html"></iframe>
+        </div>
+
+        <iframe src="maintenance.html" style="height:80px;margin-top:10px;"></iframe>
+        <iframe src="check1.html" style="height:210px;margin-top:10px;"></iframe>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <button class="close-modal" onclick="closeModal()">×</button>
+        <iframe id="modalIframe"></iframe>
+    </div>
+</div>
+
+<script>
+const SIMBRIEF_USERID = "759298";
+let flightMapInstance = null;
+
+function initializeMap(pathData, depIdent, arrIdent) {
+    const mapContainer = document.getElementById("waypointsList");
+    mapContainer.style.height = '300px'; 
+    mapContainer.innerHTML = '';
+
+    if (typeof L === 'undefined' || pathData.length < 2) {
+        mapContainer.textContent = "Carte indisponible.";
+        return;
+    }
+    if (flightMapInstance) flightMapInstance.remove();
+
+    flightMapInstance = L.map('waypointsList'); 
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap, © CARTO',
+        subdomains: 'abcd', maxZoom: 19
+    }).addTo(flightMapInstance);
+
+    const pathCoords = pathData.map(p => [p.lat, p.lon]);
+    const polyline = L.polyline(pathCoords, { color:'white', weight:3 }).addTo(flightMapInstance);
+
+    pathData.forEach((point, i) => {
+        const isAirport = (i===0)||(i===pathData.length-1);
+        L.circleMarker([point.lat, point.lon], {
+            radius: isAirport ? 8 : 4, color:'white', weight:2, fillOpacity:1
+        }).bindPopup(`<b>${point.ident}</b><br>Altitude : ${point.altitude} ft<br>OAT : ${point.oat} °C`).addTo(flightMapInstance);
+    });
+    flightMapInstance.fitBounds(polyline.getBounds(), {padding:[20,20]});
+}
+
+async function fetchSimBriefData() {
+    const url = `https://www.simbrief.com/api/xml.fetcher.php?userid=${SIMBRIEF_USERID}`;
+    try {
+        const res = await fetch(url);
+        const xmlText = await res.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+        const ofpUrl = xmlDoc.querySelector("params > xml_file")?.textContent;
+        if (!ofpUrl) { loadStoredData(); return; }
+
+        const ofpRes = await fetch(ofpUrl);
+        const ofpText = await ofpRes.text();
+        const ofpDoc = parser.parseFromString(ofpText, "application/xml");
+
+        const dep = ofpDoc.querySelector("origin > icao_code")?.textContent || "N/A";
+        const arr = ofpDoc.querySelector("destination > icao_code")?.textContent || "N/A";
+        const cruiseAlt = ofpDoc.querySelector("general > initial_altitude")?.textContent || "N/A";
+        const route = ofpDoc.querySelector("general > route")?.textContent || "N/A";
+        const depRwy = ofpDoc.querySelector("origin > plan_rwy")?.textContent || "N/A";
+        const arrRwy = ofpDoc.querySelector("destination > plan_rwy")?.textContent || "N/A";
+        const depMetar = ofpDoc.querySelector("origin > metar")?.textContent || "N/A";
+        const arrMetar = ofpDoc.querySelector("destination > metar")?.textContent || "N/A";
+
+        let pathData = [];
+        const extract = (n,i)=>{const lat=parseFloat(n.querySelector("lat,pos_lat")?.textContent);
+            const lon=parseFloat(n.querySelector("lon,pos_long")?.textContent);
+            if(!isNaN(lat)&&!isNaN(lon))return{lat,lon,ident:i,altitude:n.querySelector("altitude_feet")?.textContent||"N/A",oat:n.querySelector("oat")?.textContent||"N/A"};return null;};
+        const o=extract(ofpDoc.querySelector("origin"),dep); if(o)pathData.push(o);
+        ofpDoc.querySelectorAll("navlog>fix").forEach(f=>{const id=f.querySelector("ident")?.textContent;const p=extract(f,id);if(p)pathData.push(p);});
+        const d=extract(ofpDoc.querySelector("destination"),arr); if(d)pathData.push(d);
+
+        document.getElementById("departureAirport").textContent = dep;
+        document.getElementById("arrivalAirport").textContent = arr;
+        document.getElementById("fpType").textContent = "Type de plan de vol : IFR";
+        document.getElementById("routeType").textContent = "Route : " + route;
+        document.getElementById("cruisingAlt").textContent = "Altitude de croisière : FL" + (parseInt(cruiseAlt)/100);
+        document.getElementById("departureMetar").textContent = "METAR départ : " + depMetar;
+        document.getElementById("arrivalMetar").textContent = "METAR arrivée : " + arrMetar;
+        document.getElementById("departureRunway").textContent = "Piste départ : " + depRwy;
+        document.getElementById("arrivalRunway").textContent = "Piste arrivée : " + arrRwy;
+
+        if (pathData.length>=2) initializeMap(pathData,dep,arr);
+        localStorage.setItem("pathData",JSON.stringify(pathData));
+    } catch(e){ console.error(e); loadStoredData(); }
+}
+
+function loadStoredData() {
+    const data = JSON.parse(localStorage.getItem("pathData")||"[]");
+    if(data.length>=2) initializeMap(data,"DEP","ARR");
+}
+
+function openModal(src){const m=document.getElementById("modal");const f=document.getElementById("modalIframe");f.src=src;m.style.display="flex";}
+function closeModal(){const m=document.getElementById("modal");const f=document.getElementById("modalIframe");f.src="";m.style.display="none";}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const tabs = document.querySelectorAll(".tab-menu .tab");
+    const iframe = document.getElementById("tabIframe");
+
+    // 🔹 Étape 1 : Vérifie s'il y a un onglet sauvegardé dans le cache
+    const savedTab = localStorage.getItem("activeTab");
+
+    let tabToActivate = tabs[0]; // par défaut : le premier onglet
+    if (savedTab) {
+        const found = Array.from(tabs).find(t => t.dataset.target === savedTab);
+        if (found) tabToActivate = found;
+    }
+
+    // 🔹 Étape 2 : Active le bon onglet au chargement
+    tabs.forEach(t => t.classList.remove("active"));
+    tabToActivate.classList.add("active");
+    iframe.src = tabToActivate.dataset.target;
+
+    // 🔹 Étape 3 : Gestion du clic + sauvegarde dans le cache
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            iframe.src = tab.dataset.target;
+
+            // ✅ Enregistre l’onglet actuel dans le cache
+            localStorage.setItem("activeTab", tab.dataset.target);
+        });
+    });
+
+    // 🔹 Étape 4 : Récupère les données de vol SimBrief
+    fetchSimBriefData();
+});
+
+</script>
+</body>
+</html>

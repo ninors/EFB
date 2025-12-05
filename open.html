@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intro Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Arial", sans-serif;
+            background-color: #2e344e;
+            color: #ffffff;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        .intro {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: #fff url('intro.gif') no-repeat center center;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            animation: fadeOut 1s ease-out 1.7s forwards;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        .content {
+            display: none;
+            animation: fadeIn 1s ease-in forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+        }
+
+        .panel {
+            position: relative;
+            width: 300px;
+            background-color: #394259;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            display: block;
+            margin: 0 auto 10px auto;
+        }
+
+        .panel .description {
+            position: absolute;
+            bottom: -100%;
+            left: 0;
+            width: 100%;
+            background: black;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            transition: bottom 0.5s ease-in-out;
+        }
+
+        .panel:hover .description, .panel:active .description {
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="intro"></div>
+    <div class="content">
+        <div class="container">
+            <!-- Bouton 1 -->
+            <div class="panel" onclick="window.location.href='https://dispatch.simbrief.com/options/new'">
+                <img src="1.png" alt="Créer un plan de vol" class="icon">
+                <h3>Créer un plan de vol</h3>
+                <div class="description">Planifiez vos itinéraires de vol avec précision.</div>
+            </div>
+
+            <!-- Bouton 2 qui ouvre ton .bat -->
+            <div class="panel" onclick="window.location.href='page1.html'">
+                <img src="2.png" alt="Ouvrir Little Navmap" class="icon">
+                <h3>Ouvrir HORIZON</h3>
+                <div class="description">Lancer directement l'EFB.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        setTimeout(() => {
+            document.querySelector('.content').style.display = 'block';
+        }, 3400);
+    </script>
+</body>
+</html>

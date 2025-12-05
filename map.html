@@ -1,0 +1,254 @@
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Carte Aéroport OACI - Enrichie</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+rel="stylesheet">
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #33384b;
+    height: 100vh;
+    color: white;
+  }
+
+  #map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+  }
+
+  #search {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(43, 47, 58, 0.95);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    z-index: 999;
+  }
+
+  #search input {
+    width: 160px;
+    padding: 5px;
+    font-size: 14px;
+    background-color: #2b2f3a;
+    border: 1px solid #464c61;
+    color: white;
+    border-radius: 4px;
+  }
+
+  #search button {
+    padding: 5px 10px;
+    font-size: 14px;
+    background-color: #464c61;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+  }
+
+  #search button:hover {
+    background-color: #5a6178;
+  }
+
+  .material-icons {
+    font-size: 28px;
+    color: white;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    font-size: 13px;
+    color: #ccc;
+  }
+
+  /* Nouveau style pour la popup */
+   .mapboxgl-popup-content {
+    background-color: #2b2f3a !important;
+    color: white !important;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .mapboxgl-popup-tip {
+    border-top-color: #2b2f3a !important;
+  }
+
+  .map-marker {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+}
+
+.map-marker .material-icons {
+  font-size: 36px;
+  color: red; /* 🔴 tu peux aussi essayer #ff3b3b ou #e53935 */
+}
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  font-size: 36px;
+  color: red;
+  line-height: 1;
+}
+
+#splash-screen {
+    position: fixed;
+    z-index: 99999;
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #33384b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 1s ease;
+  }
+
+  #splash-screen.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #splash-screen img {
+    max-width: 50%;
+    max-height: 50%;
+  }
+  }
+</style>
+
+
+</head>
+<body>
+<!-- Écran de chargement plein écran avec GIF -->
+<div id="splash-screen">
+  <img src="map.gif" alt="Chargement..." />
+</div>
+
+<div id="search">
+  <input type="text" id="oaci" placeholder="Code OACI (ex: LFPG)">
+  <button onclick="searchAirport()">Rechercher</button>
+</div>
+<div id="map"></div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+
+<script>
+window.addEventListener('load', () => {
+    // Laisse le GIF affiché 5 secondes, puis disparaît en fondu
+    setTimeout(() => {
+      const splash = document.getElementById('splash-screen');
+      splash.classList.add('fade-out');
+      setTimeout(() => splash.remove(), 1000); // Supprime le DOM après l’animation
+    }, 5000);
+  });
+  mapboxgl.accessToken = 'pk.eyJ1IjoibGlkb3dlYnNlcnZpY2VzIiwiYSI6ImNrbnN0NXlmMTA3NG4ydm54bDEwaHNudnUifQ.vldUW-BB5_C19arKUFBM9Q';
+
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/lidowebservices/clkcbgens000v01ph2y5bg4e1',
+    center: [2, 47],
+    zoom: 5
+  });
+
+  let airportsData = {}, runwayData = [], freqData = [], marker;
+
+  // Chargement des données
+  async function loadData() {
+    const [airportsJson, runwaysCsv, freqsCsv] = await Promise.all([
+      fetch('https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json').then(r => r.json()),
+      fetch('https://raw.githubusercontent.com/davidmegginson/ourairports-data/refs/heads/main/runways.csv').then(r => r.text()),
+      fetch('https://raw.githubusercontent.com/davidmegginson/ourairports-data/refs/heads/main/airport-frequencies.csv').then(r => r.text())
+    ]);
+
+    airportsData = airportsJson;
+    runwayData = parseCSV(runwaysCsv);
+    freqData = parseCSV(freqsCsv);
+  }
+
+  function parseCSV(csv) {
+    return csv.split('\n')
+      .map(l => l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(e => e.replace(/^"|"$/g, '')))
+      .filter(r => r.length > 1 && r[0] !== "id");
+  }
+
+  async function searchAirport() {
+    const code = document.getElementById('oaci').value.trim().toUpperCase();
+    if (!/^[A-Z]{4}$/.test(code)) return alert("Code OACI invalide.");
+
+    const airport = airportsData[code];
+    if (!airport || !airport.lat || !airport.lon) {
+      return alert("Aéroport introuvable dans la base JSON.");
+    }
+
+    const { name, lat, lon } = airport;
+
+    map.flyTo({ center: [lon, lat], zoom: 12 });
+
+   const el = document.createElement('div');
+el.className = 'map-marker';
+el.innerHTML = '<span class="material-symbols-outlined">control_camera</span>';
+
+
+    if (marker) marker.remove();
+    marker = new mapboxgl.Marker(el).setLngLat([lon, lat]).addTo(map);
+
+    // === PISTES ===
+    const runways = runwayData
+      .filter(r => r[2] === code)
+      .map(r =>
+        `${r[8] || '?'} / ${r[14] || '?'} - ${r[3] || '?'} ft x ${r[4] || '?'} ft - ${r[5] || '?'}`
+      )
+      .join('<br>') || "Non disponible";
+
+    // === FREQUENCES ===
+    const freqs = freqData
+      .filter(f => f[2] === code)
+      .map(f => `${f[4] || f[3] || "Type inconnu"} : ${f[5]} MHz`)
+      .join('<br>') || "Non disponibles";
+
+    // === METAR ===
+    let metarText = '';
+    try {
+      const metarRes = await fetch(`https://api.allorigins.win/raw?url=https://tgftp.nws.noaa.gov/data/observations/metar/stations/${code}.TXT`);
+      if (metarRes.ok) metarText = await metarRes.text();
+      else metarText = "METAR non disponible.";
+    } catch (e) {
+      metarText = "Erreur lors du chargement METAR.";
+    }
+
+    const html = `
+      <strong>${name} (${code})</strong><br><br>
+      <u>Pistes :</u><br>${runways}<br><br>
+      <u>Fréquences :</u><br>${freqs}<br><br>
+      <u>METAR :</u><br><pre>${metarText}</pre>
+    `;
+
+    new mapboxgl.Popup({ maxWidth: "400px" })
+      .setLngLat([lon, lat])
+      .setHTML(html)
+      .addTo(map);
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>

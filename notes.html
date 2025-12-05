@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Bloc Note Onglets</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #33384b;
+            height: 100vh;
+            color: white;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .topbar {
+            background-color: #2b2f3a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+        }
+
+        .tabs {
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            background-color: #2b2f3a;
+            padding: 5px 10px;
+            gap: 8px;
+            position: relative;
+        }
+
+        .tab {
+            background-color: #464c61;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: move;
+            user-select: none;
+            transition: transform 0.2s, background-color 0.3s;
+            color: white;
+        }
+
+        .tab.active {
+            background-color: #8b8f9a;
+            color: #2b2f3a;
+        }
+
+        .add-tab-button {
+            background-color: transparent;
+            padding: 6px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-tab-button:hover {
+            background-color: #7b80a0;
+        }
+
+        .content-area {
+            flex: 1;
+            margin: 10px 20px;
+            padding: 10px;
+            background-color: #2b2f3a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .floating-toolbar {
+            position: absolute;
+            display: none;
+            background: #2b2f3a;
+            padding: 5px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .floating-toolbar button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            margin: 0 2px;
+            cursor: pointer;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: #2b2f3a;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 300px;
+            color: white;
+        }
+
+        .modal-content button {
+            margin: 10px 5px 0 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            background: #464c61;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .modal-content button:hover {
+            background: #6c718e;
+        }
+
+        .modal-content input[type="text"] {
+            width: 90%;
+            padding: 8px;
+            font-size: 1em;
+            border-radius: 6px;
+            border: none;
+            margin-top: 10px;
+            background-color: #464c61;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <div></div>
+        <div class="controls">
+            <span class="material-icons" onclick="downloadAsPng()">download</span>
+            <span class="material-icons" onclick="openResetModal()">delete</span>
+        </div>
+    </div>
+    <div class="tabs" id="tabs" ondragover="event.preventDefault()" ondrop="reorderTabs(event)"></div>
+    <div class="content-area" id="note" contenteditable="true" onmouseup="handleSelection()"></div>
+</div>
+
+<div class="floating-toolbar" id="textToolbar">
+    <button onclick="execCmd('bold')"><span class="material-icons">format_bold</span></button>
+    <button onclick="execCmd('italic')"><span class="material-icons">format_italic</span></button>
+    <button onclick="execCmd('underline')"><span class="material-icons">format_underlined</span></button>
+    <button onclick="execCmd('insertUnorderedList')"><span class="material-icons">format_list_bulleted</span></button>
+    <button onclick="execCmd('justifyLeft')"><span class="material-icons">format_align_left</span></button>
+    <button onclick="execCmd('justifyCenter')"><span class="material-icons">format_align_center</span></button>
+    <button onclick="execCmd('justifyRight')"><span class="material-icons">format_align_right</span></button>
+</div>
+
+<div id="modal" class="modal" style="display:none">
+    <div class="modal-content">
+        <p>Voulez-vous vraiment tout supprimer ?</p>
+        <button onclick="confirmReset()">Oui, supprimer</button>
+        <button onclick="closeModal()">Annuler</button>
+    </div>
+</div>
+
+<div id="renameModal" class="modal" style="display:none">
+    <div class="modal-content">
+        <p>Renommer la page :</p>
+        <input type="text" id="renameInput" />
+        <div>
+            <button onclick="confirmRename()">Valider</button>
+            <button onclick="closeRenameModal()">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script>
+let pages = JSON.parse(localStorage.getItem("pages")) || { "Page 1": "" };
+let currentPage = localStorage.getItem("currentPage") || "Page 1";
+const tabsContainer = document.getElementById("tabs");
+const note = document.getElementById("note");
+const toolbar = document.getElementById("textToolbar");
+let renameTarget = null;
+let dragSrc = null;
+let dragCurrentTarget = null;
+
+function renderTabs() {
+    tabsContainer.innerHTML = '';
+    Object.keys(pages).forEach(name => {
+        const tab = document.createElement("div");
+        tab.className = "tab" + (name === currentPage ? " active" : "");
+        tab.textContent = name;
+        tab.draggable = true;
+        tab.dataset.name = name;
+
+        tab.onclick = () => switchPage(name);
+        tab.ondblclick = () => openRenameModal(name);
+
+        tab.ondragstart = (e) => {
+            dragSrc = name;
+            dragCurrentTarget = e.target;
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", name);
+            e.target.style.transition = "none";
+        };
+
+        tab.ondrag = (e) => {
+            if (!e.clientY) return;
+            const threshold = window.innerHeight * 0.8;
+            if (e.clientY > threshold) {
+                const intensity = Math.min(1, (e.clientY - threshold) / (window.innerHeight - threshold));
+                e.target.style.backgroundColor = `rgba(255, 0, 0, ${intensity})`;
+            } else {
+                e.target.style.backgroundColor = "";
+            }
+        };
+
+        tab.ondragend = (e) => {
+            e.target.style.backgroundColor = "";
+            const threshold = window.innerHeight * 0.8;
+            if (e.clientY > threshold) {
+                delete pages[dragSrc];
+                if (currentPage === dragSrc) {
+                    const keys = Object.keys(pages);
+                    currentPage = keys.length ? keys[0] : null;
+                    note.innerHTML = currentPage ? pages[currentPage] : "";
+                }
+                saveNote();
+                renderTabs();
+            }
+            dragSrc = null;
+        };
+
+        tabsContainer.appendChild(tab);
+    });
+
+    const addBtn = document.createElement("div");
+    addBtn.className = "add-tab-button";
+    addBtn.innerHTML = '<span class="material-icons">add_circle</span>';
+    addBtn.onclick = addPage;
+    tabsContainer.appendChild(addBtn);
+}
+
+function reorderTabs(e) {
+    e.preventDefault();
+    const from = e.dataTransfer.getData("text/plain");
+    const toElement = e.target.closest('.tab');
+    if (!toElement || !from) return;
+    const to = toElement.dataset.name;
+    if (from === to) return;
+
+    const keys = Object.keys(pages);
+    const fromIndex = keys.indexOf(from);
+    const toIndex = keys.indexOf(to);
+    keys.splice(toIndex, 0, keys.splice(fromIndex, 1)[0]);
+    const reordered = {};
+    keys.forEach(k => reordered[k] = pages[k]);
+    pages = reordered;
+    saveNote();
+    renderTabs();
+}
+
+function switchPage(name) {
+    saveNote();
+    currentPage = name;
+    note.innerHTML = pages[name];
+    localStorage.setItem("currentPage", name);
+    renderTabs();
+}
+
+function saveNote() {
+    pages[currentPage] = note.innerHTML;
+    try {
+        localStorage.setItem("pages", JSON.stringify(pages));
+        localStorage.setItem("currentPage", currentPage);
+    } catch (e) {
+        alert("⚠️ Stockage local plein ou inaccessible !");
+        console.error(e);
+    }
+}
+
+function addPage() {
+    const baseName = "Page ";
+    let i = 1;
+    while (Object.keys(pages).includes(baseName + i)) {
+        i++;
+    }
+    const newName = baseName + i;
+    pages[newName] = "";
+    switchPage(newName);
+}
+
+function openRenameModal(name) {
+    renameTarget = name;
+    document.getElementById("renameInput").value = name;
+    document.getElementById("renameModal").style.display = "flex";
+    document.getElementById("renameInput").focus();
+}
+
+function closeRenameModal() {
+    renameTarget = null;
+    document.getElementById("renameModal").style.display = "none";
+}
+
+function confirmRename() {
+    const newName = document.getElementById("renameInput").value.trim();
+    if (!newName) return alert("Nom vide !");
+    if (pages[newName] && newName !== renameTarget) return alert("Ce nom existe déjà !");
+    pages[newName] = pages[renameTarget];
+    delete pages[renameTarget];
+    if (currentPage === renameTarget) currentPage = newName;
+    saveNote();
+    renderTabs();
+    closeRenameModal();
+}
+
+function openResetModal() {
+    document.getElementById("modal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+}
+
+function confirmReset() {
+    localStorage.clear();
+    pages = { "Page 1": "" };
+    currentPage = "Page 1";
+    note.innerHTML = "";
+    renderTabs();
+    saveNote();
+    closeModal();
+}
+
+async function downloadAsPng() {
+    let combined = document.createElement("div");
+    combined.style.background = "#33384b";
+    combined.style.color = "white";
+    combined.style.padding = "20px";
+    combined.style.width = "800px";
+    document.body.appendChild(combined);
+    for (const [name, content] of Object.entries(pages)) {
+        const section = document.createElement("div");
+        section.innerHTML = `<h2>${name}</h2>` + content;
+        combined.appendChild(section);
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const canvas = await html2canvas(combined, { useCORS: true });
+    const link = document.createElement("a");
+    link.download = "blocnote.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    document.body.removeChild(combined);
+}
+
+function execCmd(command) {
+    document.execCommand(command, false, null);
+    handleSelection();
+}
+
+function handleSelection() {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) {
+        toolbar.style.display = "none";
+        return;
+    }
+    const range = selection.getRangeAt(0);
+    if (range.toString().length === 0) {
+        toolbar.style.display = "none";
+        return;
+    }
+
+    const rect = range.getBoundingClientRect();
+    toolbar.style.left = `${rect.left + window.scrollX}px`;
+    toolbar.style.top = `${rect.top + window.scrollY - 40}px`;
+    toolbar.style.display = "flex";
+}
+
+if (!pages[currentPage]) currentPage = Object.keys(pages)[0];
+note.innerHTML = pages[currentPage];
+renderTabs();
+
+note.addEventListener("input", () => {
+    pages[currentPage] = note.innerHTML;
+    saveNote();
+});
+</script>
+</body>
+</html>

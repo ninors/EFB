@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Lecteur PDF A320</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      background-color: #2b2f3a;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .topbar {
+      background-color: #1e1f2b;
+      padding: 10px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar .title {
+      font-size: 18px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .controls button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      color: #66aaff;
+    }
+
+    #pdf-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 10px;
+    }
+
+    .page-info {
+      font-size: 14px;
+      padding: 0 5px;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="title">📄 Manuel A320 - PDF Viewer</div>
+    <div class="controls">
+      <button onclick="prevPage()" title="Page précédente"><span class="material-icons">chevron_left</span></button>
+      <span class="page-info" id="page_num_info">Page 1 / 1</span>
+      <button onclick="nextPage()" title="Page suivante"><span class="material-icons">chevron_right</span></button>
+      <button onclick="zoomOut()" title="Zoom arrière"><span class="material-icons">zoom_out</span></button>
+      <button onclick="zoomIn()" title="Zoom avant"><span class="material-icons">zoom_in</span></button>
+      <button onclick="resetZoom()" title="Réinitialiser zoom"><span class="material-icons">zoom_out_map</span></button>
+    </div>
+  </div>
+
+  <div id="pdf-container">
+    <canvas id="pdf-render"></canvas>
+  </div>
+
+  <script>
+    const url = "https://ninors.github.io/test/A320.pdf";
+
+    let pdfDoc = null,
+        pageNum = 1,
+        pageIsRendering = false,
+        pageNumIsPending = null,
+        scale = 1.2,
+        canvas = document.getElementById("pdf-render"),
+        ctx = canvas.getContext("2d");
+
+    const renderPage = num => {
+      pageIsRendering = true;
+      pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({ scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderCtx = {
+          canvasContext: ctx,
+          viewport: viewport
+        };
+
+        page.render(renderCtx).promise.then(() => {
+          pageIsRendering = false;
+          if (pageNumIsPending !== null) {
+            renderPage(pageNumIsPending);
+            pageNumIsPending = null;
+          }
+        });
+
+        document.getElementById("page_num_info").textContent = `Page ${num} / ${pdfDoc.numPages}`;
+      });
+    };
+
+    const queueRenderPage = num => {
+      if (pageIsRendering) {
+        pageNumIsPending = num;
+      } else {
+        renderPage(num);
+      }
+    };
+
+    const prevPage = () => {
+      if (pageNum <= 1) return;
+      pageNum--;
+      queueRenderPage(pageNum);
+    };
+
+    const nextPage = () => {
+      if (pageNum >= pdfDoc.numPages) return;
+      pageNum++;
+      queueRenderPage(pageNum);
+    };
+
+    const zoomIn = () => {
+      scale = Math.min(scale + 0.2, 3);
+      queueRenderPage(pageNum);
+    };
+
+    const zoomOut = () => {
+      scale = Math.max(scale - 0.2, 0.6);
+      queueRenderPage(pageNum);
+    };
+
+    const resetZoom = () => {
+      scale = 1.2;
+      queueRenderPage(pageNum);
+    };
+
+    pdfjsLib.getDocument(url).promise.then(pdfDoc_ => {
+      pdfDoc = pdfDoc_;
+      renderPage(pageNum);
+    }).catch(err => {
+      alert("Erreur de chargement du PDF : " + err.message);
+    });
+  </script>
+
+</body>
+</html>

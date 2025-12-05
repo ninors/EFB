@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimBrief PDF Fetcher</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Arial", sans-serif;
+            background-color: #2b2f3a;
+            color: #ffffff;
+            overflow: hidden; /* Empêche le défilement de la page */
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 800px; /* Ajusté pour une taille moyenne */
+            height: 600px; /* Ajusté pour une taille moyenne */
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .panel {
+            width: 100%;
+            height: 100%;
+            background-color: #394259; /* Fond du panneau */
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #pdfViewer {
+            flex-grow: 1; /* Permet au conteneur de remplir l'espace restant */
+            overflow: auto; /* Permet le défilement du PDF */
+            position: relative;
+            cursor: pointer; /* Change le curseur pour indiquer qu'on peut cliquer */
+            background-color: #2e344e; /* Fond derrière le PDF */
+            border-radius: 12px;
+            padding: 10px; /* Ajout d'un espace entre le PDF et le bord */
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 12px;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0; /* Espace entre le PDF et les boutons */
+        }
+
+        #controls input {
+            width: 60px; /* Largeur de la barre d'entrée */
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        #controls input:focus {
+            outline: none;
+            box-shadow: 0 0 5px #63657d;
+        }
+
+        #controls button {
+            padding: 10px;
+            background-color: #4c4e60;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        #controls button:hover {
+            background-color: #63657d;
+        }
+
+        #controls button:active {
+            background-color: #303342;
+        }
+
+        /* Style de la barre de défilement */
+        #pdfViewer::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #pdfViewer::-webkit-scrollbar-track {
+            background: #2e344e;
+        }
+
+        #pdfViewer::-webkit-scrollbar-thumb {
+            background: #63657d;
+            border-radius: 10px;
+        }
+
+        #pdfViewer::-webkit-scrollbar-thumb:hover {
+            background: #4c4e60;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+</head>
+<body>
+    <div class="container">
+            <div class="panel">
+            <div id="pdfViewer" onclick="toggleFullscreen(event)"></div>
+            <div id="controls">
+                <button id="prev">Précédent</button>
+                <input type="number" id="pageInput" min="1" value="1" />
+                <span id="pageCount">/ 0</span>
+                <button id="next">Suivant</button>
+                <button id="zoomIn">
+                    <span class="material-icons-outlined">zoom_in</span>
+                </button>
+                <button id="zoomOut">
+                    <span class="material-icons-outlined">zoom_out</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pdfDoc = null,
+            pageNum = 1,
+            scale = 1,
+            canvas = document.createElement('canvas'),
+            ctx = canvas.getContext('2d');
+
+        async function fetchPDFLink() {
+            const userId = 759298;
+            const url = `https://www.simbrief.com/api/xml.fetcher.php?userid=${userId}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data, "text/xml");
+                const pdfLink = xmlDoc.getElementsByTagName("link")[0].textContent;
+                const fullLink = `https://www.simbrief.com/ofp/flightplans/${pdfLink}`;
+
+                // Charger le PDF
+                const loadingTask = pdfjsLib.getDocument(fullLink);
+                loadingTask.promise.then((pdf) => {
+                    pdfDoc = pdf;
+                    document.getElementById('pageCount').textContent = `/${pdf.numPages}`;
+                    renderPage(pageNum);
+                });
+
+            } catch (error) {
+                console.error("Erreur lors de la récupération du PDF : ", error);
+            }
+        }
+
+        async function renderPage(num) {
+            const page = await pdfDoc.getPage(num);
+            const viewport = page.getViewport({ scale });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const pdfViewer = document.getElementById('pdfViewer');
+            pdfViewer.innerHTML = ''; // Clear previous content
+            pdfViewer.appendChild(canvas);
+
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport,
+            };
+            await page.render(renderContext).promise;
+        }
+
+        document.getElementById('prev').addEventListener('click', () => {
+            if (pageNum <= 1) return;
+            pageNum--;
+            renderPage(pageNum);
+            document.getElementById('pageInput').value = pageNum;
+        });
+
+        document.getElementById('next').addEventListener('click', () => {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            renderPage(pageNum);
+            document.getElementById('pageInput').value = pageNum;
+        });
+
+        document.getElementById('pageInput').addEventListener('change', (e) => {
+            const inputPageNum = parseInt(e.target.value);
+            if (inputPageNum >= 1 && inputPageNum <= pdfDoc.numPages) {
+                pageNum = inputPageNum;
+                renderPage(pageNum);
+            } else {
+                e.target.value = pageNum; // Reset to current page if invalid
+            }
+        });
+
+        // Zoom In and Zoom Out
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            scale += 0.1;
+            renderPage(pageNum);
+        });
+
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            scale = Math.max(0.1, scale - 0.1); // Prevent scale from going below 0.1
+            renderPage(pageNum);
+        });
+
+        // Événements de double clic pour le plein écran
+        function toggleFullscreen(event) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.getElementById('pdfViewer').requestFullscreen();
+            }
+        }
+
+        // Appeler la fonction pour récupérer le lien au chargement de la page
+        window.onload = fetchPDFLink;
+    </script>
+</body>
+</html>

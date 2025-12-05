@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sections Responsives avec Titres par Colonne</title>
+   <style>
+/* ======== STYLE GLOBAL ======== */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #2B2F3A;
+    color: white;
+    height: 100vh;
+    overflow: auto; /* ✅ défilement actif */
+}
+
+/* ======== MASQUER LA SCROLLBAR ======== */
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+    width: 0px;     /* ✅ invisibilité totale */
+    height: 0px;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: none;        /* ✅ cache la scrollbar */
+    -ms-overflow-style: none;     /* ✅ IE/Edge Legacy */
+}
+
+/* ======== LAYOUT ======== */
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.topbar {
+    background-color: #2b2f3a;
+    padding: 15px 25px;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    flex: 1;
+    box-sizing: border-box;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.section {
+    background-color: #2b2f3a;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+.section-title {
+    padding: 10px 15px;
+    background-color: #464c61;
+    font-weight: bold;
+}
+
+.section iframe {
+    border: none;
+    width: 100%;
+    height: 100%;
+}
+
+/* ======== HAUTEURS FIXES ======== */
+.h250 { height: 650px; }
+.h450 { height: 235px; }
+.h300 { height: 300px; }
+.h350 { height: 350px; }
+.h500 { height: 600px; }
+
+/* ======== TITRES ======== */
+.title-divider {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 0;
+    padding-left: 5px;
+}
+
+.title-divider::after {
+    content: "";
+    display: block;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border-bottom: 2px solid white;
+    opacity: 0.4;
+}
+
+/* ======== RESPONSIVE ======== */
+@media (max-width: 768px) {
+    .columns {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+</head>
+<body>
+    <div class="container">
+        <div class="columns">
+            <!-- Colonne Gauche -->
+            <div class="col">
+                <div class="section h350">
+                    <div class="section-title">Notes</div>
+                    <iframe src="notes.html" loading="lazy"></iframe>
+                </div>
+
+                <div class="title-divider">Maths et calculateur</div>
+
+                <div class="section h500">
+                    <div class="section-title">Calculatrice</div>
+                    <iframe src="calcul.html" loading="lazy"></iframe>
+                </div>
+
+                <div class="title-divider">Gestion des vols</div>
+
+                <div class="section h450">
+                    <div class="section-title">Planning des vols</div>
+                    <iframe src="chronom.html" loading="lazy"></iframe>
+                </div>
+            </div>
+
+            <!-- Colonne Droite -->
+            <div class="col">
+                <div class="section h300">
+                    <div class="section-title">Récapitulatif des vols</div>
+                    <iframe src="volstxt.html" loading="lazy"></iframe>
+                </div>
+
+                <div class="title-divider">🔧 Suivi Opérations</div>
+
+                <div class="section h300">
+                    <div class="section-title">Section 4 - Droite</div>
+                    <iframe src="pdfcheck.html" loading="lazy"></iframe>
+                </div>
+
+                <div class="section h250">
+                    <div class="section-title">Vols du jour</div>
+                    <iframe src="formvols.html" loading="lazy"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

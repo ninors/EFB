@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A320 MCDU Take Off PERF (Dark Mode Thème)</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* --- Thème de couleur SimBrief Dark Mode --- */
+        :root {
+            --bg-body: #33384b; /* Fond du corps */
+            --bg-card: #2b2f3a; /* Fond du conteneur (plus sombre) */
+            --border-color: #4a4f60; /* Couleur des bordures/séparations */
+            --text-default: #ccc; /* Texte principal */
+            
+            /* Couleurs de données MCDU adaptées au thème */
+            --green: #66bb6a;   /* Vert clair, visible sur fond foncé */
+            --amber: #ffb300;   /* Ambre pour les entrées / warnings */
+            --white: #ffffff;   /* Blanc */
+            --font-mono: 'Consolas', 'Courier New', monospace;
+        }
+
+        body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;               /* ✅ correspond à l’iframe */
+    background-color: var(--bg-body);
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-mono);
+    color: var(--text-default);
+    overflow: hidden;           /* ✅ empêche toute barre de défilement */
+}
+
+
+        .mcdu-screen {
+            /* Utilisation des styles MCDU pour la taille et l'aspect */
+            width: 380px;
+            height: 500px;
+            
+            /* Adaptation du style au thème SimBrief */
+            background-color: var(--bg-card); /* Fond de carte SimBrief */
+            border: 4px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Ombre de la carte */
+            
+            font-size: 16px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        
+        .row-large {
+            margin-bottom: 15px;
+        }
+
+        /* Titre de la page */
+        .title-header {
+            text-align: center;
+            color: var(--white);
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            /* Ligne de séparation MCDU */
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 5px;
+        }
+
+        /* V-Speeds (gauche) */
+        .v-speeds {
+            float: left;
+            width: 45%;
+        }
+
+        .v-box {
+            margin-bottom: 12px;
+        }
+
+        .v-label {
+            color: var(--text-default); /* Garde le gris/blanc */
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .v-value {
+            color: var(--amber); /* Couleur Ambre/Orange pour les valeurs à entrer */
+            font-size: 24px;
+            /* Retire la bordure pour un look plus "glass" et moins "bouton" */
+            border: none; 
+            padding: 1px 4px;
+            display: inline-block;
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+            /* Ajout d'une ligne de soulignement pour l'entrée active MCDU */
+            border-bottom: 2px solid var(--amber); 
+        }
+
+        /* Colonne centrale/droite (données) */
+        .data-column {
+            float: right;
+            width: 50%;
+            font-size: 14px;
+            text-align: right;
+        }
+        
+        .data-label {
+            color: var(--text-default);
+            float: left;
+            text-align: left;
+        }
+        
+        .data-value {
+            font-weight: bold;
+        }
+        
+        /* Couleurs pour les données */
+        .green { color: var(--green); }
+        .amber { color: var(--amber); }
+        .white { color: var(--white); }
+        .dashed { color: #555; }
+        
+        .uplink { 
+            position: absolute; 
+            bottom: 10px; 
+            left: 15px;
+            font-size: 14px;
+        }
+        .next-phase {
+            position: absolute; 
+            bottom: 10px; 
+            right: 15px;
+            color: var(--green);
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .clear-fix {
+            clear: both;
+        }
+
+        /* small error/status */
+        #status { margin-left: 8px; }
+        .err { color: #ff8b8b; font-weight:700; font-size:12px; display:inline-block; margin-left:8px; }
+    </style>
+</head>
+<body>
+
+    <div class="mcdu-screen">
+        <div class="title-header">TAKE OFF RWY</div>
+        
+        <div class="v-speeds">
+            <div class="v-box">
+                <div class="v-label">V1</div>
+                <div id="v1" class="v-value">----</div>
+            </div>
+            
+            <div class="v-box">
+                <div class="v-label">VR</div>
+                <div id="vr" class="v-value">----</div>
+            </div>
+            
+            <div class="v-box">
+                <div class="v-label">V2</div>
+                <div id="v2" class="v-value">----</div>
+            </div>
+            
+            <div class="row row-large">
+                <span class="white">TRANS ALT</span>
+                <span id="trans_alt" class="green">XXXX</span>
+            </div>
+            
+            <div class="row row-large">
+                <span class="white">THR RED/ACC</span>
+                <span id="thr_red_acc" class="green">XXXX/XXXX</span>
+            </div>
+        </div>
+
+        <div class="data-column">
+            
+            <div class="row">
+                <span class="data-label white">FLP RETR</span>
+                <span class="data-value dashed">F----</span>
+            </div>
+            
+            <div class="row">
+                <span class="data-label white">SLT RETR</span>
+                <span class="data-value dashed">S----</span>
+            </div>
+            
+            <div class="row row-large">
+                <span class="data-label white">CLEAN</span>
+                <span class="data-value dashed">0----</span>
+            </div>
+
+            <div class="row">
+                <span class="data-label white">TO SHIFT</span>
+                <span class="data-value green">[ M][ ]*</span>
+            </div>
+
+            <div class="row">
+                <span class="data-label white">FLAPS/THS</span>
+                <span id="flaps_ths" class="data-value green">[ ]/[ ]</span>
+            </div>
+            
+            <div class="row row-large">
+                <span class="data-label white">FLEX TO TEMP</span>
+                <span id="flex_temp" class="data-value green">[ ]°</span>
+            </div>
+
+            <div class="row">
+                <span class="data-label white">ENG OUT ACC</span>
+                <span id="eng_out_acc" class="green">XXXX</span>
+            </div>
+            
+        </div>
+        
+        <div class="clear-fix"></div>
+        
+        <div class="uplink">
+            <span class="amber">UPLINK</span>
+            <span class="green">&lt;TO DATA&gt;</span>
+            <span id="status" class="amber" style="margin-left: 10px;">LOADING...</span>
+            <span id="err" class="err" style="display:none"></span>
+        </div>
+        
+        <div class="next-phase">
+            &lt;NEXT PHASE&gt;
+        </div>
+    </div>
+
+    <script>
+        // ---------- CONFIG ----------
+        const SIMBRIEF_API_URL = "https://www.simbrief.com/api/xml.fetcher.php?userid=759298";
+        // If you want an automatic proxy fallback, set PROXY_URL to something like:
+        // const PROXY_URL = "https://corsproxy.io/?"; // <-- example public proxy (use at your risk)
+        const PROXY_URL = ""; // empty by default (no automatic proxy)
+
+        // ---------- ELEMENTS ----------
+        const statusEl = document.getElementById('status');
+        const errEl = document.getElementById('err');
+        const v1El = document.getElementById('v1');
+        const vrEl = document.getElementById('vr');
+        const v2El = document.getElementById('v2');
+        const flapsThsEl = document.getElementById('flaps_ths');
+        const flexTempEl = document.getElementById('flex_temp');
+        const thrRedAccEl = document.getElementById('thr_red_acc');
+        const transAltEl = document.getElementById('trans_alt');
+        const engOutAccEl = document.getElementById('eng_out_acc');
+
+        // ---------- UTIL ----------
+        function nodeText(parent, tag){
+            if(!parent) return null;
+            const n = parent.querySelector(tag);
+            return n ? n.textContent.trim() : null;
+        }
+
+        // Robust parser using my logic: choose planned_runway if present, else first runway
+        function parseSimbriefXml(xmlString){
+            const parser = new DOMParser();
+            const xml = parser.parseFromString(xmlString, "application/xml");
+            if(xml.querySelector('parsererror')) throw new Error('XML parse error');
+
+            // parsed output with defaults
+            const out = {
+                v1: null, vr: null, v2: null,
+                flex_temp: null, flaps: null, trim: null,
+                thr_red_acc: null, eng_out_acc: null, trans_alt: null
+            };
+
+            // find TLR -> takeoff
+            const tlr = xml.querySelector('tlr');
+            const takeoff = tlr ? tlr.querySelector('takeoff') : xml.querySelector('takeoff');
+            
+            let chosenRunway = null;
+            try {
+                if(takeoff){
+                    const cond = takeoff.querySelector('conditions');
+                    const plannedRunway = cond ? nodeText(cond,'planned_runway') : null;
+
+                    // collect all runway nodes
+                    const runNodes = takeoff.querySelectorAll('runway');
+                    if(runNodes && runNodes.length>0){
+                        if(plannedRunway){
+                            for(const rn of runNodes){
+                                const id = nodeText(rn,'identifier');
+                                if(id && id.replace(/\s+/g,'') === plannedRunway.replace(/\s+/g,'')){
+                                    chosenRunway = rn;
+                                    break;
+                                }
+                            }
+                        }
+                        if(!chosenRunway) chosenRunway = runNodes[0];
+                    } else {
+                        const single = takeoff.querySelector('runway');
+                        if(single) chosenRunway = single;
+                    }
+
+                    if(chosenRunway){
+                        out.v1 = nodeText(chosenRunway,'speeds_v1') || nodeText(chosenRunway,'v1') || out.v1;
+                        out.vr = nodeText(chosenRunway,'speeds_vr') || nodeText(chosenRunway,'vr') || out.vr;
+                        out.v2 = nodeText(chosenRunway,'speeds_v2') || nodeText(chosenRunway,'v2') || out.v2;
+                        out.flex_temp = nodeText(chosenRunway,'flex_temperature') || nodeText(chosenRunway,'flex_temp') || out.flex_temp;
+                        out.flaps = nodeText(chosenRunway,'flap_setting') || nodeText(chosenRunway,'flaps') || out.flaps;
+
+                        // distances used as THR RED/ACC placeholders if actual altitudes not present
+                        const distance_decide = nodeText(chosenRunway,'distance_decide');
+                        const distance_reject = nodeText(chosenRunway,'distance_reject');
+                        const distance_continue = nodeText(chosenRunway,'distance_continue');
+                        out.thr_red_acc = (distance_decide || 'XXXX') + '/' + (distance_reject || 'XXXX');
+                        out.eng_out_acc = distance_continue || 'XXXX';
+                    }
+
+                    // fallback: maybe conditions hold flex / planned runway etc
+                    if(!out.flex_temp){
+                        out.flex_temp = cond ? (nodeText(cond,'flex_temperature') || nodeText(cond,'flex_temp')) : out.flex_temp;
+                    }
+
+                    // T/O altitudes (reduction/accel) may be in departure node or custom tags
+                    const departure = xml.querySelector('departure') || xml.querySelector('dep');
+                    if(departure){
+                        const red_alt = nodeText(departure,'thr_reduction_alt') || nodeText(departure,'thr_reduction') || nodeText(departure,'thr_red_alt');
+                        const acc_alt = nodeText(departure,'accel_alt') || nodeText(departure,'acceleration_alt');
+                        if(red_alt || acc_alt){
+                            out.thr_red_acc = (red_alt || 'XXXX') + '/' + (acc_alt || 'XXXX');
+                            out.eng_out_acc = acc_alt || out.eng_out_acc || 'XXXX';
+                        }
+                        const t_alt = nodeText(departure,'transition_alt') || nodeText(departure,'transition_altitude') || nodeText(departure,'trans_alt');
+                        out.trans_alt = t_alt || out.trans_alt;
+                    }
+
+                    // If still missing trans_alt, try global tags
+                    if(!out.trans_alt){
+                        out.trans_alt = nodeText(xml,'transition_altitude') || nodeText(xml,'transition_alt') || 'XXXX';
+                    }
+
+                    // trim / ths: sometimes in navlog -> first fix -> takeoff_trim_setting
+                    const firstFix = xml.querySelector('navlog > fix') || xml.querySelector('fix');
+                    out.trim = firstFix ? (nodeText(firstFix,'takeoff_trim_setting') || nodeText(firstFix,'trim')) : null;
+                }
+            } catch(e){
+                console.warn('parser partial error', e);
+            }
+
+            // fallback defaults for display if nothing found
+            out.v1 = out.v1 || '----';
+            out.vr = out.vr || '----';
+            out.v2 = out.v2 || '----';
+            out.flex_temp = (out.flex_temp && out.flex_temp !== '') ? out.flex_temp : '—';
+            out.flaps = out.flaps || '—';
+            out.thr_red_acc = out.thr_red_acc || 'XXXX/XXXX';
+            out.eng_out_acc = out.eng_out_acc || 'XXXX';
+            out.trans_alt = out.trans_alt || 'XXXX';
+            out.trim = out.trim || '—';
+
+            return out;
+        }
+
+        // Update UI with parsed values (keeps design exactly as requested)
+        function updateUI(data){
+            v1El.textContent = data.v1;
+            vrEl.textContent = data.vr;
+            v2El.textContent = data.v2;
+            flexTempEl.textContent = '[' + (data.flex_temp === '—' ? '  ' : data.flex_temp) + ']°';
+            flapsThsEl.textContent = '[' + (data.flaps || ' ') + ']/[' + (data.trim || ' ') + ']';
+            thrRedAccEl.textContent = data.thr_red_acc;
+            engOutAccEl.textContent = data.eng_out_acc;
+            transAltEl.textContent = data.trans_alt;
+            statusEl.textContent = 'DATA READY';
+            statusEl.className = 'green';
+            errEl.style.display = 'none';
+        }
+
+        // show error message in uplink area
+        function showError(msg){
+            statusEl.textContent = 'ERROR';
+            statusEl.className = 'amber';
+            errEl.style.display = 'inline-block';
+            errEl.textContent = msg;
+            // set placeholders
+            v1El.textContent = vrEl.textContent = v2El.textContent = '----';
+            flapsThsEl.textContent = '[—]/[—]';
+            flexTempEl.textContent = '[—]°';
+            thrRedAccEl.textContent = '—/—';
+            engOutAccEl.textContent = 'XXXX';
+            transAltEl.textContent = 'XXXX';
+        }
+
+        // Try direct fetch; if fails with CORS (TypeError) and PROXY_URL configured, try proxy
+        async function fetchAndParse(){
+            statusEl.textContent = 'FETCHING...';
+            statusEl.className = 'amber';
+            errEl.style.display = 'none';
+            try {
+                // Attempt direct fetch first
+                const resp = await fetch(SIMBRIEF_API_URL, { method: 'GET', mode: 'cors' });
+                if(!resp.ok) throw new Error('HTTP ' + resp.status);
+                const txt = await resp.text();
+                const parsed = parseSimbriefXml(txt);
+                updateUI(parsed);
+            } catch (err) {
+                console.warn('Direct fetch failed:', err);
+                // If CORS likely (TypeError) and proxy set, try proxy
+                if((err instanceof TypeError || /Failed to fetch/i.test(err.message)) && PROXY_URL){
+                    try {
+                        statusEl.textContent = 'FETCHING (proxy)...';
+                        const proxied = PROXY_URL + encodeURIComponent(SIMBRIEF_API_URL);
+                        const r2 = await fetch(proxied);
+                        if(!r2.ok) throw new Error('Proxy HTTP ' + r2.status);
+                        const txt2 = await r2.text();
+                        const parsed2 = parseSimbriefXml(txt2);
+                        updateUI(parsed2);
+                        return;
+                    } catch(proxyErr){
+                        console.error('Proxy failed', proxyErr);
+                        showError('Proxy failed: ' + (proxyErr.message || proxyErr.toString()).substring(0,32));
+                        return;
+                    }
+                }
+                // else show helpful message and guidance for proxy
+                const isCors = (err instanceof TypeError) || /Failed to fetch|NetworkError|CORS/i.test(String(err));
+                if(isCors){
+                    showError('CORS blocked. Héberge un proxy (ex: Node) ou configure PROXY_URL.');
+                } else {
+                    showError('Fetch error: ' + (err.message || err.toString()).substring(0,40));
+                }
+            }
+        }
+
+        // Auto load on page open
+        window.addEventListener('load', () => {
+            fetchAndParse();
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chronomètre Amélioré</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <style>
+    body {
+      background-color: #394259;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      gap: 20px;
+      overflow: hidden;
+    }
+    .time-counter {
+      display: flex;
+      justify-content: space-around;
+      font-size: 40px;
+      font-weight: bold;
+      letter-spacing: 5px;
+      margin-top: 50px;
+    }
+    .time-item {
+      text-align: center;
+    }
+    .time-item span {
+      display: block;
+      font-size: 60px;
+    }
+    .time-item p {
+      margin: 0;
+      font-size: 14px;
+      font-weight: normal;
+    }
+    #startPauseButton, #resetButton {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 36px;
+      cursor: pointer;
+      padding: 10px;
+    }
+    #startPauseButton:hover, #resetButton:hover {
+      opacity: 0.8;
+    }
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+    .button-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .material-icons-outlined {
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="time-counter" id="timePanel">
+    <div class="time-item">
+      <span id="hours">00</span>
+      <p>Heure(s)</p>
+    </div>
+    <div class="time-item">
+      <span id="minutes">00</span>
+      <p>Minute(s)</p>
+    </div>
+    <div class="time-item">
+      <span id="seconds">00</span>
+      <p>Seconde(s)</p>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <div class="button-container">
+      <button id="startPauseButton">
+        <span class="material-icons-outlined" id="startPauseIcon">timer</span>
+      </button>
+    </div>
+    <div class="button-container">
+      <button id="resetButton">
+        <span class="material-icons-outlined">history</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const startPauseButton = document.getElementById('startPauseButton');
+    const resetButton = document.getElementById('resetButton');
+    const startPauseIcon = document.getElementById('startPauseIcon');
+    const hoursElem = document.getElementById('hours');
+    const minutesElem = document.getElementById('minutes');
+    const secondsElem = document.getElementById('seconds');
+
+    let timerInterval;
+    let startTime = null;
+    let elapsedTime = 0;
+    let running = false;
+
+    function updateTime() {
+      const now = Date.now();
+      elapsedTime = now - startTime;
+
+      const hours = Math.floor(elapsedTime / 3600000);
+      const minutes = Math.floor((elapsedTime % 3600000) / 60000);
+      const seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+      hoursElem.textContent = String(hours).padStart(2, '0');
+      minutesElem.textContent = String(minutes).padStart(2, '0');
+      secondsElem.textContent = String(seconds).padStart(2, '0');
+    }
+
+    function saveState() {
+      if (running) {
+        localStorage.setItem('chronoStartTime', startTime);
+        localStorage.setItem('chronoRunning', 'true');
+      } else {
+        localStorage.setItem('chronoElapsed', elapsedTime);
+        localStorage.setItem('chronoRunning', 'false');
+        localStorage.removeItem('chronoStartTime');
+      }
+    }
+
+    function loadState() {
+      const savedRunning = localStorage.getItem('chronoRunning') === 'true';
+      const savedStartTime = parseInt(localStorage.getItem('chronoStartTime'), 10);
+      const savedElapsed = parseInt(localStorage.getItem('chronoElapsed'), 10);
+
+      if (savedRunning && !isNaN(savedStartTime)) {
+        startTime = savedStartTime;
+        timerInterval = setInterval(updateTime, 1000);
+        startPauseIcon.textContent = 'pause';
+        running = true;
+        updateTime();
+      } else if (!isNaN(savedElapsed)) {
+        elapsedTime = savedElapsed;
+        updateDisplayFromElapsed();
+      }
+    }
+
+    function updateDisplayFromElapsed() {
+      const hours = Math.floor(elapsedTime / 3600000);
+      const minutes = Math.floor((elapsedTime % 3600000) / 60000);
+      const seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+      hoursElem.textContent = String(hours).padStart(2, '0');
+      minutesElem.textContent = String(minutes).padStart(2, '0');
+      secondsElem.textContent = String(seconds).padStart(2, '0');
+    }
+
+    startPauseButton.addEventListener('click', () => {
+      if (running) {
+        clearInterval(timerInterval);
+        elapsedTime = Date.now() - startTime;
+        running = false;
+        startPauseIcon.textContent = 'timer';
+        saveState();
+      } else {
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(updateTime, 1000);
+        running = true;
+        startPauseIcon.textContent = 'pause';
+        saveState();
+      }
+    });
+
+    resetButton.addEventListener('click', () => {
+      clearInterval(timerInterval);
+      elapsedTime = 0;
+      startTime = null;
+      running = false;
+      updateDisplayFromElapsed();
+      startPauseIcon.textContent = 'timer';
+
+      localStorage.removeItem('chronoStartTime');
+      localStorage.removeItem('chronoElapsed');
+      localStorage.setItem('chronoRunning', 'false');
+    });
+
+    // Init au chargement
+    window.addEventListener('load', loadState);
+  </script>
+</body>
+</html>

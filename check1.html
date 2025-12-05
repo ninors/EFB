@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist Compacte & Responsive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+<style>
+    /* ==================================== */
+    /* == PALETTE ET RESPONSIVITÉ GLOBAL == */
+    /* ==================================== */
+    :root {
+        /* Couleurs héritées du modèle fourni */
+        --color-background-main: #2D3447; 
+        --color-card-background: #394259; /* Utilisé pour la section (.section) */
+        --color-text-light: #ffffff;
+        /* Couleurs d'accentuation */
+        --color-accent: #800000; /* Rouge foncé (Demandé) */
+        --color-success: #45a049; /* Vert pour les tâches complétées */
+    }
+
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--color-background-main);
+        color: var(--color-text-light);
+        margin: 0;
+        padding: 10px; /* Padding ajusté pour un panneau compact */
+        
+        /* Permet le défilement */
+        overflow-y: scroll;
+        /* Masquer la scrollbar (IE et Edge Legacy) */
+        -ms-overflow-style: none;
+        /* Masquer la scrollbar (Firefox) */
+        scrollbar-width: none;
+    }
+
+    /* Masquer la scrollbar (Chrome, Safari, Edge Chromium) sur le corps */
+    body::-webkit-scrollbar {
+        display: none;
+    }
+    
+    /* RÈGLES GÉNÉRALES POUR MASQUER LA SCROLLBAR SUR L'ÉLÉMENT RACINE (HTML) ET LES AUTRES ÉLÉMENTS */
+    html {
+        /* Masquer la scrollbar (IE et Edge Legacy) */
+        -ms-overflow-style: none;
+        /* Masquer la scrollbar (Firefox) */
+        scrollbar-width: none;
+    }
+
+    /* Masquer la scrollbar (Chrome, Edge, Safari) */
+    html::-webkit-scrollbar {
+        width: 0px;
+        height: 0px;
+    }
+
+
+    /* ==================================== */
+    /* == STYLE DE LA CHECKLISTE COMPACTE == */
+    /* ==================================== */
+    
+    h1 {
+        font-size: 1.2em;
+        font-weight: 600;
+        margin-top: 0;
+        margin-bottom: 10px;
+        color: var(--color-text-light);
+        text-transform: uppercase;
+    }
+
+    .checklist-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 8px; /* Espace réduit entre les sections */
+        width: 100%; /* Prend toute la largeur disponible dans le iframe */
+    }
+
+    .section {
+        background-color: var(--color-card-background);
+        border-radius: 8px;
+        padding: 12px; /* Padding réduit */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .section:hover {
+        background-color: #4a5166; /* Légèrement plus clair au survol */
+    }
+
+    .section-header {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 1em;
+    }
+
+    .header-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .header-icon {
+        font-size: 1.2em;
+        color: var(--color-accent); /* Applique la couleur rouge foncé */
+    }
+
+    /* Masquer le bouton de fermeture dans cette version compacte */
+    .close-btn {
+        display: none; 
+    }
+
+    /* Gestion de l'ouverture (Animation) */
+    .actions {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease-in-out, opacity 0.3s;
+        opacity: 0;
+        margin-top: 0;
+        padding-top: 0;
+    }
+
+    .actions.active {
+        max-height: 600px; /* Assure l'affichage complet du contenu */
+        opacity: 1;
+        margin-top: 10px;
+        padding-top: 5px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Style des éléments de la liste */
+    .action-item {
+        margin: 6px 0; /* Marge très réduite */
+        display: flex;
+        align-items: flex-start;
+        font-size: 0.85em;
+    }
+
+    /* Effet visuel pour les tâches complétées */
+    .action-item.completed label {
+        text-decoration: line-through;
+        color: rgba(255, 255, 255, 0.6);
+        font-style: italic;
+    }
+
+    /* Checkbox personnalisée */
+    .checkbox-container {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        margin-right: 8px;
+        flex-shrink: 0;
+        padding-top: 1px;
+    }
+
+    .checkbox {
+        opacity: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    .checkmark {
+        height: 16px; /* Taille de la coche réduite */
+        width: 16px;
+        background-color: #6a718c;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: background-color 0.2s, border-color 0.2s;
+    }
+
+    .checkbox:checked ~ .checkmark {
+        background-color: var(--color-success);
+        border-color: var(--color-success);
+    }
+
+    .checkmark::after {
+        content: "\e5ca";
+        font-family: 'Material Icons';
+        color: white;
+        font-size: 12px; /* Taille de l'icône de coche réduite */
+        opacity: 0;
+        transform: scale(0.5);
+        transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .checkbox:checked ~ .checkmark::after {
+        opacity: 1;
+        transform: scale(1);
+    }
+    
+    .action-label {
+        line-height: 1.3;
+        flex-grow: 1;
+    }
+
+    /* Icône d'expansion (Chevron) avec rotation */
+    .expand-icon {
+        transition: transform 0.3s;
+    }
+</style>
+</head>
+<body>
+    <h1>PHASES CRITIQUES</h1> 
+
+    <div class="checklist-wrapper">
+        
+        <div class="section" data-section="5">
+            <div class="section-header">
+                <div class="header-text">
+                    <span class="material-icons header-icon">flight_takeoff</span>
+                    <span>5. Décollage</span>
+                </div>
+                <span class="material-icons expand-icon">expand_more</span>
+            </div>
+            <button class="close-btn" aria-label="Fermer la section">&times;</button>
+            <div class="actions">
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Interruption - procédure revue</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Annonces pax - ST BLT ON / NO SMK ON</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Volets / Trim - vérifiés _______________</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Aérofreins/spoilers - vérifiés rentrés</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Autobrakes - sur RTO</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Secteur d’arrivée - libre, alignement OK</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">PA - vérifié, non activé</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Code transpondeur - vérifié</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Feux roulage / att - OFF / ON</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Manette des gaz - _______ % + chrono/heure</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">V1 = ________ KIAS volets ______</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">VR = _________ KIAS volets _____</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">V2 = _________ KIAS volets _____</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">V1/VR = _____ et V2 = _____ si volets 0°</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Instruments moteurs - vérifiés hors rouge</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" data-section="10">
+            <div class="section-header">
+                <div class="header-text">
+                    <span class="material-icons header-icon">flight_land</span>
+                    <span>10. Atterrissage</span>
+                </div>
+                <span class="material-icons expand-icon">expand_more</span>
+            </div>
+            <button class="close-btn" aria-label="Fermer la section">&times;</button>
+            <div class="actions">
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Interruption - procédure revue</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Manette des gaz - plein réduit</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">PA - sur OFF</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Atterrissage - _______________ KIAS</label>
+                </div>
+                <div class="action-item">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="checkbox">
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="action-label">Aérofreins/spoilers - sortis</label>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+<script>
+    const sections = document.querySelectorAll('.section');
+    
+    // Fonction pour gérer l'affichage des actions (ouverture/fermeture)
+    function toggleSection(section) {
+        const actions = section.querySelector('.actions');
+        const expandIcon = section.querySelector('.expand-icon');
+        
+        // Fermer les autres sections actives (mécanisme "Accordion")
+        document.querySelectorAll('.actions.active').forEach(activeActions => {
+            if (activeActions !== actions) {
+                activeActions.classList.remove('active');
+                // Réinitialiser l'icône de l'autre section
+                activeActions.closest('.section').querySelector('.expand-icon').style.transform = 'rotate(0deg)';
+            }
+        });
+        
+        // Basculer l'état de la section actuelle
+        actions.classList.toggle('active');
+        if (actions.classList.contains('active')) {
+             // Faire pivoter l'icône vers le haut
+             expandIcon.style.transform = 'rotate(180deg)';
+        } else {
+             // Réinitialiser l'icône vers le bas
+             expandIcon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    /**
+     * Enregistre l'état des checkboxes dans le localStorage (accessible).
+     * @returns {void}
+     */
+    function saveCheckboxesState() {
+        const sectionsData = [];
+        sections.forEach(section => {
+            const sectionData = {
+                section: section.getAttribute('data-section'),
+                checkboxes: []
+            };
+            const checkboxes = section.querySelectorAll('.checkbox');
+            checkboxes.forEach(checkbox => {
+                sectionData.checkboxes.push(checkbox.checked);
+            });
+            sectionsData.push(sectionData);
+        });
+        // Sauvegarde dans le localStorage (Le "acche" est le localStorage du navigateur)
+        localStorage.setItem('sectionsData', JSON.stringify(sectionsData));
+    }
+
+    /**
+     * Charge l'état des checkboxes depuis le localStorage.
+     * @returns {void}
+     */
+    function loadCheckboxesState() {
+        const sectionsData = JSON.parse(localStorage.getItem('sectionsData'));
+        if (sectionsData) {
+            sectionsData.forEach(sectionData => {
+                const section = document.querySelector(`.section[data-section="${sectionData.section}"]`);
+                if (section) {
+                    const checkboxes = section.querySelectorAll('.checkbox');
+                    sectionData.checkboxes.forEach((checked, index) => {
+                        if (checkboxes[index]) {
+                            checkboxes[index].checked = checked;
+                            // Appliquer l'état "completed" au chargement
+                            if (checked) {
+                                checkboxes[index].closest('.action-item').classList.add('completed');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    // Initialisation des écouteurs d'événements
+    sections.forEach(section => {
+        const header = section.querySelector('.section-header');
+        const checkboxes = section.querySelectorAll('.checkbox');
+        
+        // Clic sur l'en-tête pour ouvrir/fermer (Accordion)
+        header.addEventListener('click', () => {
+            toggleSection(section);
+        });
+        
+        // Clic sur une case à cocher pour l'enregistrement
+        checkboxes.forEach(checkbox => {
+            const actionItem = checkbox.closest('.action-item');
+
+            checkbox.addEventListener('change', () => {
+                // Ajouter/Retirer la classe "completed" pour l'effet de style (barré/grisé)
+                if (checkbox.checked) {
+                    actionItem.classList.add('completed');
+                } else {
+                    actionItem.classList.remove('completed');
+                }
+                // ENREGISTREMENT DE L'ÉTAT DANS LE CACHE (localStorage)
+                saveCheckboxesState();
+            });
+        });
+    });
+
+    // Charger l'état au lancement de la page
+    loadCheckboxesState();
+</script>
+
+</body>
+</html>

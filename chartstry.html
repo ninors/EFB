@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>ChartFox Viewer — version améliorée</title>
+
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#2b2f3a; --panel:#394259; --muted:#999; --accent:#800000;
+  --card:#2d3447; --card-hover:#4c4e60; --fav-bg:#4c4e60; --fav-hover:#63657d;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; height:100vh; display:flex; font-family:Arial, sans-serif;
+  background:var(--bg); color:#fff; overflow:hidden;
+}
+
+/* Left panel */
+#left-panel{
+  width:36%;
+  min-width:300px;
+  max-width:520px;
+  background:var(--panel);
+  padding:20px;
+  display:flex;               /* permet à #charts-container de prendre tout l'espace */
+  flex-direction:column;      /* important pour que flex:1 fonctionne */
+  border-radius:12px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.2);
+  margin:20px;
+  overflow:hidden;            /* cache la scrollbar du parent */
+}
+
+#left-panel.collapsed .content-hide-on-collapse{ display:none; }
+#left-panel input, #left-panel button{
+  width:100%; padding:12px; border-radius:10px; border:none; margin-bottom:12px; font-size:14px;
+}
+#left-panel input{ background:#2d3447; color:#fff; }
+#left-panel button{ background:var(--accent); color:#fff; cursor:pointer; font-weight:bold; transition:background 0.3s; }
+#left-panel button:hover{ background:#800000; }
+
+.tabs{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.tab{
+  padding:8px 12px; background:var(--card); border-radius:10px 10px 0 0;
+  cursor:pointer; border:1px solid #2d3447; user-select:none; font-size:13px; transition:background 0.3s;
+}
+.tab.active{ background:var(--panel); color:var(--accent); border-color:var(--accent); font-weight:600; }
+
+#charts-container{
+  flex:1;                     /* prend tout l’espace vertical restant */
+  overflow-y:auto;             /* scroll indépendant */
+  margin-top:12px;
+  padding-right:4px;
+  max-height: calc(100vh - 160px); /* ajuste selon boutons et tabs */
+}
+.chart-box{
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--card); padding:12px; border-radius:10px; margin-bottom:12px; cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,0.2); transition:background 0.3s;
+}
+.chart-box:hover{ background:var(--card-hover); }
+.chart-title{ flex:1; padding-right:8px; font-size:14px; color:#fff; }
+
+.material-symbols-outlined{
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-family: 'Material Symbols Outlined';
+  font-size:20px; color:#e3e3e3; cursor:pointer; user-select:none;
+}
+
+#right-panel{ flex:1; display:flex; flex-direction:column; min-width:0; margin:20px; }
+#fav-tabs{
+  display:flex; gap:10px; padding:12px; background:#20222b; border-radius:12px; border-bottom:1px solid #2b2b2b;
+  overflow:auto; align-items:center;
+}
+.fav-tab{
+  position: relative; background: var(--fav-bg); color: #fff;
+  padding: 8px 26px 8px 12px; border-radius: 10px; white-space: nowrap; cursor: pointer; font-size: 13px;
+}
+.fav-tab:hover{ background: var(--fav-hover); }
+.fav-tab .close{
+  position:absolute; right:6px; top:6px; width:16px; height:16px; line-height:16px;
+  text-align:center; border-radius:50%; background:transparent; color:#fff !important;
+  font-weight:700; font-size:12px; display:none; cursor:pointer;
+}
+.fav-tab:hover .close{ display:inline-block; background: rgba(0,0,0,0.25); color:#fff !important; }
+
+.dark-canvas{ filter: invert(1) hue-rotate(180deg) brightness(0.9); }
+
+#pdf-toolbar{
+  display:flex; align-items:center; gap:8px; padding:12px; background:var(--card); border-radius:10px; margin-bottom:12px; flex-shrink:0;
+}
+#pdf-toolbar .btn{
+  display:inline-flex; align-items:center; justify-content:center; min-width:40px; height:40px;
+  border-radius:10px; background:transparent; border:none; cursor:pointer; color:#fff; transition:background 0.3s, color 0.3s;
+}
+#pdf-toolbar .btn:hover{ background:#4c4e60; color:var(--accent); }
+#pdf-toolbar .pageinfo{ flex:1; text-align:center; color:var(--muted); font-size:13px; }
+
+#pdf-canvas{ flex:1; background:#1f212a; display:flex; align-items:flex-start; justify-content:flex-start; padding:16px; border-radius:12px; overflow:hidden; }
+canvas{ transform-origin: top left !important; }
+.canvas-wrap{ position:relative; display:inline-block; }
+
+#left-toggle{ background:transparent; border:none; cursor:pointer; opacity:0.6; transition:opacity 0.2s ease; }
+#left-toggle:hover{ opacity:1; }
+#left-panel.collapsed #left-toggle svg{ transform:rotate(180deg); }
+
+@media(max-width:900px){
+  #left-panel{ width:42%; }
+  #left-toggle{ right:-12px; }
+}
+::-webkit-scrollbar{ width:6px; height:6px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background-color: rgba(255,255,255,0.3); border-radius:3px; border:1px solid rgba(255,255,255,0.1); }
+::-webkit-scrollbar-thumb:hover{ background-color: rgba(255,255,255,0.5); }
+#left-panel.collapsed {
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  padding: 0 !important;
+  margin: 20px 0 20px 20px;
+  overflow: hidden;
+}
+
+
+#left-panel.collapsed .tabs,
+#left-panel.collapsed #charts-container,
+#left-panel.collapsed input,
+#left-panel.collapsed button {
+  display: none;       /* tu as déjà .content-hide-on-collapse, c’est OK */
+}
+
+/* bouton toggle reste visible */
+#left-panel.collapsed #left-toggle {
+  position: absolute;
+  top: 20px;
+  right: -12px;
+  opacity: 1;
+}
+
+body.dark-mode #the-canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9);
+}
+
+</style>
+</head>
+
+<body>
+<div id="left-panel">
+  <div class="content-hide-on-collapse">
+    <input id="icao" placeholder="Code OACI (ex: LFPG)" />
+    <button id="search">Rechercher</button>
+    <div id="tabs" class="tabs"></div>
+    <div id="charts-container" class="charts-list"></div>
+  </div>
+</div>
+
+<div id="right-panel">
+  <div id="fav-tabs"></div>
+
+  <div id="pdf-toolbar">
+    <button class="btn" id="left-toggle" title="Réduire le menu">
+      <span class="material-symbols-outlined">shadow_minus</span>
+    </button>
+    <button class="btn" id="toggle-dark" title="Mode sombre">
+      <span class="material-symbols-outlined">dark_mode</span>
+    </button>
+    <button class="btn" id="prev-page">◀</button>
+    <button class="btn" id="next-page">▶</button>
+    <div class="pageinfo">Page <span id="page-num">1</span> / <span id="page-count">--</span></div>
+    <button class="btn" id="zoom-out">−</button>
+    <button class="btn" id="zoom-in">+</button>
+    <button class="btn" id="rotate">⤵</button>
+  </div>
+
+  <div id="pdf-canvas">
+    <div class="canvas-wrap"><canvas id="the-canvas"></canvas></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+/* ---------- CONFIGURATION ---------- */
+const CLIENT_ID = "9f946a22-0dc6-4027-a66e-9678e653c478";
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+const SCOPE = "charts:view charts:index charts:files";
+
+/* ---------- DOM ---------- */
+const icaoInput = document.getElementById('icao');
+const searchBtn = document.getElementById('search');
+const tabsEl = document.getElementById('tabs');
+const chartsContainer = document.getElementById('charts-container');
+const favTabsEl = document.getElementById('fav-tabs');
+const canvas = document.getElementById('the-canvas');
+const ctx = canvas.getContext('2d');
+const pdfContainer = document.getElementById('pdf-canvas');
+const pageNumEl = document.getElementById('page-num');
+const pageCountEl = document.getElementById('page-count');
+const leftPanel = document.getElementById('left-panel');
+const leftToggle = document.getElementById('left-toggle');
+const darkBtn = document.getElementById('toggle-dark');
+
+/* ---------- PDF STATE ---------- */
+let pdfDoc = null, pageNum = 1, scale = 1.2, rotation = 0;
+let pageRendering = false, pageNumPending = null;
+
+/* ---------- PAN STATE ---------- */
+let isDragging = false, dragStart = {x:0,y:0}, scrollStart = {left:0,top:0};
+
+/* ---------- LOCALSTORAGE KEYS ---------- */
+const LS_ICAO = 'chart_lastICAO_v1';
+const LS_FAVS = 'chart_favs_v1';
+const LS_LAST_PDF = 'chart_lastPDF_v1';
+
+/* ---------- UTILITIES ---------- */
+function saveLastICAO(icao){ try{ localStorage.setItem(LS_ICAO, icao); }catch(e){} }
+function loadLastICAO(){ try{ return localStorage.getItem(LS_ICAO)||''; }catch(e){ return ''; } }
+function loadFavs(){ try{ return JSON.parse(localStorage.getItem(LS_FAVS)||'[]'); }catch(e){ return []; } }
+function saveFavs(favs){ try{ localStorage.setItem(LS_FAVS, JSON.stringify(favs)); }catch(e){} }
+
+/* ---------- PDF RENDERING ---------- */
+function renderPage(num){
+    pageRendering = true;
+    pdfDoc.getPage(num).then(page=>{
+        const viewport = page.getViewport({scale, rotation});
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
+        canvas.style.width = (viewport.width/dpr)+'px';
+        canvas.style.height = (viewport.height/dpr)+'px';
+        page.render({canvasContext:ctx, viewport}).promise.then(()=>{
+            pageRendering = false;
+            if(pageNumPending!==null){ const next=pageNumPending; pageNumPending=null; renderPage(next); }
+        });
+        pageNumEl.textContent = num;
+    });
+}
+function queueRenderPage(num){ pageRendering ? pageNumPending=num : renderPage(num); }
+function prevPage(){ if(pdfDoc && pageNum>1){ pageNum--; queueRenderPage(pageNum); } }
+function nextPage(){ if(pdfDoc && pageNum<pdfDoc.numPages){ pageNum++; queueRenderPage(pageNum); } }
+function doZoomIn(){ if(pdfDoc){ scale=+(scale+0.2).toFixed(2); queueRenderPage(pageNum); } }
+function doZoomOut(){ if(pdfDoc && scale>0.4){ scale=+(scale-0.2).toFixed(2); queueRenderPage(pageNum); } }
+function doRotate(){ if(pdfDoc){ rotation=(rotation+90)%360; queueRenderPage(pageNum); } }
+
+function loadPDF(url){
+    scale=1.2; rotation=0; pageNum=1;
+    localStorage.setItem(LS_LAST_PDF, url);
+    pdfjsLib.getDocument(url).promise.then(pdf=>{
+        pdfDoc = pdf;
+        pageCountEl.textContent = pdf.numPages;
+        queueRenderPage(pageNum);
+    }).catch(err=>alert("Impossible de charger la carte PDF : "+err.message));
+}
+
+/* ---------- DRAG TO PAN ---------- */
+pdfContainer.addEventListener('mousedown', e=>{
+    if(!e.target.closest('canvas')) return;
+    isDragging=true;
+    dragStart={x:e.clientX,y:e.clientY};
+    scrollStart={left:pdfContainer.scrollLeft,top:pdfContainer.scrollTop};
+    pdfContainer.style.cursor='grabbing'; e.preventDefault();
+});
+window.addEventListener('mouseup', ()=>{ isDragging=false; pdfContainer.style.cursor=''; });
+window.addEventListener('mousemove', e=>{
+    if(!isDragging) return;
+    pdfContainer.scrollLeft = scrollStart.left - (e.clientX-dragStart.x);
+    pdfContainer.scrollTop = scrollStart.top - (e.clientY-dragStart.y);
+});
+pdfContainer.addEventListener('wheel', e=>{
+    if(e.ctrlKey){ e.preventDefault(); e.deltaY>0 ? doZoomOut() : doZoomIn(); }
+},{passive:false});
+
+/* ---------- TOOLBAR ---------- */
+document.getElementById('prev-page').addEventListener('click', prevPage);
+document.getElementById('next-page').addEventListener('click', nextPage);
+document.getElementById('zoom-in').addEventListener('click', doZoomIn);
+document.getElementById('zoom-out').addEventListener('click', doZoomOut);
+document.getElementById('rotate').addEventListener('click', doRotate);
+
+/* ---------- FAVORITES ---------- */
+function renderFavTabs(){
+    favTabsEl.innerHTML='';
+    loadFavs().forEach(f=>{
+        const tab=document.createElement('div'); tab.className='fav-tab'; tab.textContent=f.name;
+        tab.addEventListener('click', ()=>loadPDF(`proxy.php?url=${encodeURIComponent(f.url)}`));
+        const close=document.createElement('span'); close.className='close'; close.innerHTML='✕';
+        close.addEventListener('click', ev=>{ ev.stopPropagation(); removeFavByUrl(f.url); });
+        tab.appendChild(close); favTabsEl.appendChild(tab);
+    });
+}
+function addFav(name,url){ const favs=loadFavs(); if(!favs.find(f=>f.url===url)){ favs.push({name,url}); saveFavs(favs); } renderFavTabs(); }
+function removeFavByUrl(url){ saveFavs(loadFavs().filter(f=>f.url!==url)); renderFavTabs(); }
+
+/* ---------- CHARTFOX API ---------- */
+async function getChartsGroupedByType(icao){
+    const token = localStorage.getItem('access_token'); if(!token) throw new Error('Token manquant');
+    const resp = await fetch(`https://api.chartfox.org/v2/airports/${icao}/charts/grouped`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!resp.ok) throw new Error('Erreur API: '+resp.status);
+    return (await resp.json()).data||{};
+}
+async function getChartDetails(chartId){
+    const token = localStorage.getItem('access_token'); if(!token) throw new Error('Token manquant');
+    const resp = await fetch(`https://api.chartfox.org/v2/charts/${chartId}`, { headers:{Authorization:`Bearer ${token}`} });
+    if(!resp.ok) throw new Error('Erreur API Chart Details: '+resp.status);
+    return await resp.json();
+}
+
+/* ---------- TAB LOGIC ---------- */
+let currentTab=null;
+function createTabs(types){
+    tabsEl.innerHTML='';
+    Object.entries(types).forEach(([typeKey,charts])=>{
+        const tab=document.createElement('div'); tab.className='tab';
+        tab.dataset.typeKey = typeKey;
+        tab.textContent = charts[0].type_key || typeKey;
+        tab.addEventListener('click', ()=>setActiveTab(typeKey));
+        tabsEl.appendChild(tab);
+    });
+}
+function setActiveTab(typeKey){
+    currentTab=typeKey;
+    document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.typeKey===typeKey));
+    const charts=window.allCharts[typeKey]||[];
+    chartsContainer.innerHTML = charts.length ? '' : 'Aucune carte pour cet onglet.';
+    charts.forEach(chart=>{
+        const box=document.createElement('div'); box.className='chart-box';
+        const title=document.createElement('div'); title.className='chart-title'; title.textContent = chart.name||'Unnamed';
+        title.addEventListener('click', async ()=>{
+            try{
+                const details = await getChartDetails(chart.id);
+                const url = details.source_url || details.url;
+                if(!url) return alert("Pas de lien d'affichage disponible.");
+                loadPDF(`proxy.php?url=${encodeURIComponent(url)}`);
+            }catch(e){ alert('Erreur: '+(e.message||e)); }
+        });
+        const fav=document.createElement('span'); fav.className='material-symbols-outlined'; fav.textContent='keep';
+        fav.title = "Ajouter aux favoris";
+        fav.addEventListener('click', async ev=>{
+            ev.stopPropagation();
+            try{ const details=await getChartDetails(chart.id); if(details.url) addFav(chart.name||'Chart', details.source_url||details.url); }catch(e){}
+        });
+        box.appendChild(title); box.appendChild(fav);
+        chartsContainer.appendChild(box);
+    });
+}
+
+/* ---------- SEARCH BUTTON ---------- */
+searchBtn.addEventListener('click', async ()=>{
+    const icao = icaoInput.value.trim().toUpperCase();
+    if(!icao) return alert('Merci de saisir un code OACI.');
+    saveLastICAO(icao);
+    try{
+        const grouped = await getChartsGroupedByType(icao);
+        window.allCharts = grouped;
+        createTabs(grouped);
+        const first = Object.keys(grouped)[0];
+        if(first) setActiveTab(first);
+    }catch(err){ alert('Erreur : '+(err.message||err)); }
+});
+
+/* ---------- OAUTH ---------- */
+async function generateCodeVerifier(){ const arr=new Uint8Array(64); crypto.getRandomValues(arr); return btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+async function generateCodeChallenge(verifier){ const enc=new TextEncoder(); const data=enc.encode(verifier); const digest=await crypto.subtle.digest('SHA-256',data); return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function getURLParam(name){ return new URLSearchParams(window.location.search).get(name); }
+
+async function login(){
+    const verifier = await generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
+    localStorage.setItem('code_verifier', verifier);
+    window.location = `https://api.chartfox.org/oauth/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPE)}&code_challenge=${challenge}&code_challenge_method=S256`;
+}
+
+async function handleOAuthRedirect(){
+    const code = getURLParam('code'); if(!code) return false;
+    const verifier = localStorage.getItem('code_verifier'); if(!verifier) return false;
+    const resp = await fetch('https://api.chartfox.org/oauth/token', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({grant_type:'authorization_code',code,redirect_uri:REDIRECT_URI,client_id:CLIENT_ID,code_verifier:verifier})});
+    const data = await resp.json();
+    if(data.access_token){ localStorage.setItem('access_token',data.access_token); history.replaceState({},null,REDIRECT_URI); return true; }
+    alert('Échec OAuth'); return false;
+}
+
+/* ---------- INIT ON LOAD ---------- */
+window.addEventListener('load', async ()=>{
+    renderFavTabs();
+    const last = loadLastICAO();
+    if(last) icaoInput.value=last;
+    const token = localStorage.getItem('access_token');
+    if(!token){ const ok = await handleOAuthRedirect(); if(!ok) return login(); }
+    if(last){
+        try{ const grouped = await getChartsGroupedByType(last); window.allCharts=grouped; createTabs(grouped); const first=Object.keys(grouped)[0]; if(first) setActiveTab(first); }catch(e){}
+    }
+    const lastPDF = localStorage.getItem(LS_LAST_PDF);
+    if(lastPDF) loadPDF(lastPDF);
+});
+
+/* ---------- LEFT PANEL TOGGLE ---------- */
+leftToggle.addEventListener('click', ()=>{ leftPanel.classList.toggle('collapsed'); });
+
+/* ---------- DARK MODE ---------- */
+darkBtn.addEventListener('click', ()=>{
+  document.body.classList.toggle('dark-mode');
+  if(document.body.classList.contains('dark-mode')){
+    canvas.classList.add('dark-canvas');
+  } else {
+    canvas.classList.remove('dark-canvas');
+  }
+});
+
+</script>
+</body>
+</html>

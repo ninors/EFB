@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan de Vol SimBrief - Pagination Waypoints</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #33384b;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    overflow: hidden; /* supprime la scrollbar */
+}
+#content-area {
+    width: 100%;
+    max-width: 700px;
+    position: relative;
+}
+#launch-button {
+    position: absolute; top: -45px; right: 0; padding: 8px; border: none; border-radius: 5px;
+    background-color: #4a4f60; color: white; cursor: pointer; transition: background-color 0.3s;
+    display: flex; align-items: center; justify-content: center; line-height: 1; z-index: 10;
+}
+#launch-button:hover { background-color: #5a5f70; }
+#launch-button:disabled { background-color: #666; cursor: not-allowed; }
+#launch-button .material-icons { font-size: 24px; }
+#global-progress-bar {
+    position: absolute; top: 0; left: 0; width: 100%; height: 0;
+    background-color: rgba(102, 187, 106, 0.1);
+    transition: height 1s linear; z-index: 1;
+    border-bottom: 5px solid rgba(102, 187, 106, 0.7);
+    box-sizing: border-box; transform-origin: top;
+}
+.loading { text-align: center; padding: 50px; font-size: 1.2em; color: #ccc; width: 100%; max-width: 700px; }
+.flight-plan-table {
+    width: 100%; max-width: 700px; border-collapse: collapse;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); background-color: #2b2f3a; margin-top:0; z-index:2; position:relative;
+}
+.flight-plan-table th, .flight-plan-table td { 
+    border: 1px solid #4a4f60; 
+    padding: 15px; 
+    text-align: left; 
+    position: relative; 
+}
+
+.flight-plan-table th { 
+    background-color: #4a4f60; 
+    color: white; 
+    text-transform: uppercase; 
+    font-size: 0.9em; 
+}
+
+.flight-plan-table td { 
+    color: #ccc; 
+}
+
+.flight-plan-table tr:nth-child(even) { 
+    background-color: #33384b; 
+}
+
+.flight-plan-table tr:hover { 
+    background-color: #5a5f70; 
+}
+
+/* Ligne rouge vers l'intérieur de la case */
+.passed-fix { 
+    border-left: none !important; /* supprime l'ancien border-left */
+    box-shadow: inset 5px 0 0 0 #dc3545; /* ligne rouge à l'intérieur à gauche */
+    opacity: 0.8; 
+}
+
+.reached-fix { 
+    opacity: 0.9; 
+    background-color: rgba(102,187,106,0.05) !important; 
+}
+
+.reached-fix td { 
+    border-right: 5px solid rgba(102,187,106,0.7) !important; 
+}
+
+.checkbox-cell { 
+    text-align: center; 
+    padding: 15px 5px 15px 10px; /* padding-left augmenté pour décaler légèrement la ligne */
+    width: 50px; 
+}
+
+input[type="checkbox"] {
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    width:18px;
+    height:18px;
+    border:2px solid #ccc;
+    border-radius:4px;
+    background-color:transparent;
+    cursor:pointer;
+    transition: background-color 0.2s,border-color 0.2s;
+}
+
+input[type="checkbox"]:checked { background-color: #007bff; border-color:#007bff; }
+input[type="checkbox"]:checked::after { content:'✓'; color:white; display:block; text-align:center; font-size:14px; line-height:16px; }
+
+/* Flèches dans une barre arrondie */
+.navigation-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    margin-top: 15px;
+    background-color: #4a4f60;
+    border-radius: 10px;
+    padding: 5px 20px;
+}
+.nav-arrow {
+    font-size: 28px;
+    color: #ccc;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+}
+.nav-arrow:hover { color: white; }
+</style>
+</head>
+<body>
+
+<div id="content-area">
+    <div id="global-progress-bar"></div>
+
+    <button id="launch-button" title="Démarrer la simulation de vol">
+        <span class="material-icons">flight_takeoff</span>
+    </button>
+
+    <div class="loading" id="loading-message">
+               <br>
+        <span style="font-size:0.8em; color:#aaa;"></span>
+    </div>
+
+    <table class="flight-plan-table" id="navlog-table" style="display:none;">
+        <thead>
+            <tr>
+                <th class="checkbox-cell">Passé</th>
+                <th>Identifiant</th>
+                <th>Nom du Point</th>
+                <th>Altitude (Pieds)</th>
+                <th>Temps Écoulé (H:MM:SS)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <!-- Barre de navigation avec les deux flèches -->
+    <div class="navigation-container">
+        <span id="prev-page" class="material-icons nav-arrow">arrow_upward</span>
+        <span id="next-page" class="material-icons nav-arrow">arrow_downward</span>
+    </div>
+</div>
+
+<script>
+const STORAGE_KEY_CHECKED_FIXES = 'simbrief_checked_fixes';
+const STORAGE_KEY_SIM_STATE = 'simbrief_sim_state';
+const API_URL = "https://www.simbrief.com/api/xml.fetcher.php?userid=759298";
+
+let flightTimeInterval = null;
+let elapsedSeconds = 0;
+let isRunning = false;
+let allFixes = [];
+let totalFlightDuration = 1;
+let tableElementHeight = 0;
+
+// Pagination
+const PAGE_SIZE = 4;
+let currentPage = 0;
+
+function secondsToHMS(sec) {
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function saveCheckedState() {
+    const checkedFixes = allFixes.filter(fix => fix.rowElement.querySelector('input[type="checkbox"]').checked).map(fix => fix.ident);
+    localStorage.setItem(STORAGE_KEY_CHECKED_FIXES, JSON.stringify(checkedFixes));
+}
+
+function loadCheckedState() {
+    const checkedFixes = JSON.parse(localStorage.getItem(STORAGE_KEY_CHECKED_FIXES)||'[]');
+    allFixes.forEach(fix=>{
+        const cb=fix.rowElement.querySelector('input[type="checkbox"]');
+        if(checkedFixes.includes(fix.ident)){ cb.checked=true; fix.rowElement.classList.add('passed-fix'); }
+        else { cb.checked=false; fix.rowElement.classList.remove('passed-fix'); }
+    });
+}
+
+function saveSimState() {
+    localStorage.setItem(STORAGE_KEY_SIM_STATE, JSON.stringify({elapsed:elapsedSeconds,running:isRunning,timestamp:Date.now()}));
+}
+
+function loadSimState() {
+    const state=JSON.parse(localStorage.getItem(STORAGE_KEY_SIM_STATE));
+    if(state){ elapsedSeconds=state.elapsed; if(state.running){ elapsedSeconds+=Math.floor((Date.now()-state.timestamp)/1000); isRunning=true; } }
+}
+
+function handleCheckboxChange(e){
+    const row=e.target.closest('tr');
+    row.classList.toggle('passed-fix', e.target.checked);
+    saveCheckedState();
+}
+
+function updateLaunchButton(running){
+    const btn=document.getElementById('launch-button');
+    if(running){ btn.innerHTML='<span class="material-icons">pause</span>'; btn.title='Mettre en pause'; }
+    else{ btn.innerHTML=elapsedSeconds>0?'<span class="material-icons">play_arrow</span>':'<span class="material-icons">flight_takeoff</span>'; 
+        btn.title=elapsedSeconds>0?'Reprendre la simulation':'Démarrer la simulation'; }
+}
+
+function updateFlightProgress(){
+    elapsedSeconds++;
+    const progressBar=document.getElementById('global-progress-bar');
+    let progressRatio=elapsedSeconds/totalFlightDuration;
+    if(progressRatio>1) progressRatio=1;
+    const progressHeight=tableElementHeight*progressRatio;
+    progressBar.style.height=`${progressHeight}px`;
+
+    allFixes.forEach(fix=>{
+        fix.rowElement.classList.toggle('reached-fix', elapsedSeconds>=fix.timeTotal);
+    });
+    if(elapsedSeconds%5===0) saveSimState();
+    if(progressRatio===1 && elapsedSeconds>totalFlightDuration+10){
+        clearInterval(flightTimeInterval);
+        isRunning=false;
+        saveSimState();
+        const btn=document.getElementById('launch-button');
+        btn.innerHTML='Vol Terminé';
+        btn.disabled=true;
+    }
+}
+
+function startFlightSimulation(){
+    if(flightTimeInterval){ clearInterval(flightTimeInterval); flightTimeInterval=null; isRunning=false; updateLaunchButton(false); }
+    else{ flightTimeInterval=setInterval(updateFlightProgress,1000); isRunning=true; updateLaunchButton(true);}
+    saveSimState();
+}
+
+// Pagination fonction
+function renderPage(page){
+    const tbody=document.querySelector('#navlog-table tbody');
+    tbody.querySelectorAll('tr').forEach(r=>r.style.display='none');
+    const start=page*PAGE_SIZE;
+    const end=start+PAGE_SIZE;
+    allFixes.slice(start,end).forEach(fix=>fix.rowElement.style.display='table-row');
+}
+
+// Navigation
+document.getElementById('prev-page').addEventListener('click',()=>{
+    if(currentPage>0){ currentPage--; renderPage(currentPage); }
+});
+document.getElementById('next-page').addEventListener('click',()=>{
+    if((currentPage+1)*PAGE_SIZE<allFixes.length){ currentPage++; renderPage(currentPage); }
+});
+
+document.getElementById('launch-button').addEventListener('click', startFlightSimulation);
+window.addEventListener('beforeunload',()=>{ if(isRunning) saveSimState(); });
+
+async function fetchAndDisplayNavlog(){
+    const loadingMessage=document.getElementById('loading-message');
+    const table=document.getElementById('navlog-table');
+    const tbody=table.querySelector('tbody');
+
+    try{
+        const res=await fetch(API_URL);
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const xmlText=await res.text();
+        const xmlDoc=new DOMParser().parseFromString(xmlText,'text/xml');
+        if(xmlDoc.getElementsByTagName("parsererror").length>0) throw new Error("Erreur XML");
+
+        const fixes=xmlDoc.querySelectorAll('navlog fix');
+        const waypoints=Array.from(fixes).filter(fix=>fix.querySelector('type')?.textContent.toLowerCase()!=='apt');
+        if(waypoints.length===0){ loadingMessage.textContent="Aucun waypoint trouvé"; return; }
+
+        waypoints.forEach(fix=>{
+            const ident=fix.querySelector('ident')?.textContent||'N/A';
+            const name=fix.querySelector('name')?.textContent||ident;
+            const altFeet=fix.querySelector('altitude_feet')?.textContent||'N/A';
+            const timeTotal=parseInt(fix.querySelector('time_total')?.textContent||'0',10);
+            const altFmt=altFeet!=='N/A'?new Intl.NumberFormat('fr-FR').format(altFeet)+' ft':'N/A';
+            const row=tbody.insertRow();
+            const cbCell=row.insertCell(); cbCell.classList.add('checkbox-cell');
+            const cb=document.createElement('input'); cb.type='checkbox'; cb.addEventListener('change',handleCheckboxChange);
+            cbCell.appendChild(cb);
+            row.insertCell().textContent=ident;
+            row.insertCell().textContent=name;
+            row.insertCell().textContent=altFmt;
+            row.insertCell().textContent=secondsToHMS(timeTotal);
+            allFixes.push({ident,timeTotal,rowElement:row});
+        });
+        allFixes.sort((a,b)=>a.timeTotal-b.timeTotal);
+
+        loadingMessage.style.display='none';
+        table.style.display='table';
+        totalFlightDuration=allFixes[allFixes.length-1].timeTotal||1;
+        tableElementHeight=table.offsetHeight;
+
+        loadCheckedState();
+        loadSimState();
+        updateLaunchButton(isRunning);
+        allFixes.forEach(fix=>{ if(elapsedSeconds>=fix.timeTotal) fix.rowElement.classList.add('reached-fix'); });
+
+        renderPage(currentPage);
+        if(isRunning) startFlightSimulation();
+
+    }catch(err){
+        console.error(err);
+        document.getElementById('launch-button').disabled=true;
+        loadingMessage.innerHTML=`❌ ERREUR : récupération SimBrief échouée`;
+    }
+}
+
+fetchAndDisplayNavlog();
+</script>
+</body>
+</html>

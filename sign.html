@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heure ATC Zoulou/UTC</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            /* Le fond sombre demandé */
+            background-color: #2B2F3A; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: white; /* Couleur du texte en blanc */
+            overflow: hidden; /* Empêche les barres de défilement */
+        }
+
+        #atc-time {
+            font-size: 5em; /* Très grande taille de police */
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2); /* Légère ombre pour l'effet */
+            letter-spacing: 5px;
+        }
+
+        #time-label {
+            position: absolute;
+            bottom: 20px;
+            font-size: 1.5em;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="atc-time">--:--</div>
+    <div id="time-label">HEURE Z (UTC)</div>
+
+    <script>
+        function updateUTCTime() {
+            const now = new Date();
+            
+            // On utilise toUTCString() pour obtenir l'heure Zoulou (UTC)
+            const hours = String(now.getUTCHours()).padStart(2, '0');
+            const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+            const seconds = String(now.getUTCSeconds()).padStart(2, '0');
+            
+            const timeString = `${hours}:${minutes}:${seconds}`;
+            
+            document.getElementById('atc-time').textContent = timeString;
+        }
+
+        // Met à jour l'heure immédiatement au chargement
+        updateUTCTime();
+
+        // Met à jour l'heure chaque seconde (1000 millisecondes)
+        setInterval(updateUTCTime, 1000);
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <title>Checklist de Vol</title>
+<style>
+    /* ---------------- Style global (Racine) ---------------- */
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #2b2f3a;
+        color: white;
+        margin: 0;
+        padding: 0;
+        /* Objectif: Ne jamais avoir de scrollbar sur le body */
+        display: block;
+        height: 100vh; /* OCCUPE 100% DE LA HAUTEUR DE LA FENÊTRE */
+        width: 100vw;
+        overflow: hidden; /* SUPPRIME LA SCROLLBAR GLOBALE */
+    }
+
+    /* ---------------- Conteneur principal (Split view) ---------------- */
+    .container {
+        display: flex;
+        width: 100vw; /* Utilise toute la largeur disponible */
+        max-width: none; /* Supprime la limite de 1400px */
+        /* Hauteur ajustée pour coller aux bords de l'écran */
+        height: 100vh; 
+        margin: 0; /* SUPPRIME LES MARGES VERTICALES ET HORIZONTALES */
+        padding: 0;
+        background-color: #394259;
+        border-radius: 0; /* Supprime le border-radius pour coller aux bords */
+        box-shadow: none; /* Supprime l'ombre portée */
+        overflow: hidden; /* SUPPRIME LA SCROLLBAR DU CONTENEUR */
+    }
+    
+    /* ---------------- Menu (Sidebar) ---------------- */
+    .menu-sidebar {
+        width: 300px; 
+        background-color: #2d3447;
+        padding: 20px 0;
+        display: flex; 
+        flex-direction: column;
+        /* SCROLLBAR CONSERVÉE POUR L'INTÉRIEUR DE LA SIDEBAR */
+        overflow-y: auto; 
+        border-right: 2px solid #394259;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+        
+        /* Style pour une scrollbar élégante */
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: #5a6278 #2d3447; /* Thumb et Track */
+    }
+    .menu-sidebar::-webkit-scrollbar {
+        width: 8px;
+    }
+    .menu-sidebar::-webkit-scrollbar-track {
+        background: #2d3447;
+    }
+    .menu-sidebar::-webkit-scrollbar-thumb {
+        background-color: #5a6278;
+        border-radius: 20px;
+        border: 2px solid #2d3447;
+    }
+    
+    /* Conteneur pour les items du menu */
+    .menu-items-container {
+        flex-grow: 1; 
+        overflow-y: auto;
+    }
+
+    .menu-item {
+        padding: 15px 20px;
+        cursor: pointer;
+        font-size: 1.1em;
+        font-weight: bold;
+        transition: background-color 0.2s ease, border-left 0.2s ease;
+        border-left: 5px solid transparent;
+        margin: 5px 0;
+    }
+
+    .menu-item:hover {
+        background-color: #3a3f50;
+    }
+
+    .menu-item.active {
+        background-color: #394259;
+        border-left: 5px solid #E60000; 
+    }
+    
+    /* Bouton de Reset */
+    .reset-button {
+        margin: 20px;
+        padding: 10px;
+        text-align: center;
+        background-color: #E60000; 
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .reset-button:hover {
+        background-color: #FE0000;
+        transform: translateY(-2px);
+    }
+
+    .reset-button .material-symbols-outlined {
+        margin-right: 8px;
+        font-size: 20px;
+    }
+
+
+    /* ---------------- Zone de Checklist (Right Panel) ---------------- */
+    .checklist-display {
+        flex-grow: 1; 
+        padding: 30px;
+        /* SCROLLBAR CONSERVÉE POUR L'INTÉRIEUR DU PANNEAU DE DROITE */
+        overflow-y: auto; 
+        position: relative;
+        
+        /* Style de la scrollbar pour le panneau droit */
+        scrollbar-width: thin;
+        scrollbar-color: #5a6278 #394259;
+    }
+    .checklist-display::-webkit-scrollbar {
+        width: 8px;
+    }
+    .checklist-display::-webkit-scrollbar-track {
+        background: #394259;
+    }
+    .checklist-display::-webkit-scrollbar-thumb {
+        background-color: #5a6278;
+        border-radius: 20px;
+        border: 2px solid #394259;
+    }
+
+    .display-header {
+        font-size: 1.8em;
+        margin-bottom: 25px;
+        border-bottom: 2px solid #5a6278;
+        padding-bottom: 10px;
+        color: #ffffff;
+        text-align: center;
+        position: relative; /* Pour positionner l'alerte de reset */
+    }
+
+    .actions-list {
+        display: none; 
+    }
+
+    .actions-list.active {
+        display: block; 
+    }
+
+    .action-item {
+        margin: 15px 0;
+        padding: 12px;
+        background-color: #2d3447;
+        border-radius: 8px;
+        transition: background-color 0.2s ease, opacity 0.3s ease;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        cursor: pointer; 
+    }
+
+    .action-item:hover {
+        background-color: #3a3f50;
+    }
+    
+    /* Coche et Texte barré/transparent */
+    .action-item input[type="checkbox"] {
+        display: none; 
+    }
+    
+    .action-item label {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        cursor: pointer;
+    }
+    
+    .custom-checkbox {
+        margin-right: 15px;
+        min-width: 24px; 
+        height: 24px;
+        line-height: 24px;
+        font-size: 24px;
+        color: #aeb4c4; 
+        transition: color 0.2s ease;
+        user-select: none; 
+        font-family: "Material Symbols Outlined";
+    }
+    
+    .action-item input:checked + .custom-checkbox {
+        color: #fc5d1e; 
+        font-variation-settings: 'FILL' 1; 
+    }
+
+    .custom-checkbox::before {
+        content: "check_box_outline_blank"; 
+        font-variation-settings: 'FILL' 0;
+    }
+
+    .action-item input:checked + .custom-checkbox::before {
+        content: "check_box"; 
+        font-variation-settings: 'FILL' 1;
+    }
+
+    .action-item input:checked ~ label span:last-child {
+        text-decoration: line-through;
+        color: #aeb4c480; 
+    }
+    
+    .action-item.checked {
+        opacity: 0.6;
+    }
+
+    /* ---------------- Messages d'état ---------------- */
+    .no-selection-message {
+        text-align: center;
+        padding-top: 50px;
+        font-size: 1.4em;
+        color: #aeb4c4;
+    }
+
+    /* ---------------- Style de la Modale ---------------- */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: none; 
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: #394259;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        width: 350px;
+        text-align: center;
+        transform: scale(0.9);
+        transition: transform 0.3s ease-out;
+    }
+    .modal-overlay.active .modal-content {
+            transform: scale(1);
+    }
+
+    .modal-content h3 {
+        margin-top: 0;
+        color: #E60000;
+        font-size: 1.5em;
+    }
+
+    .modal-content p {
+        margin-bottom: 20px;
+        color: #e0e0e0;
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: space-around;
+    }
+
+    .modal-buttons button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s ease;
+        width: 45%;
+    }
+
+    #modalConfirm {
+        background-color: #2D3447;
+        color: white;
+    }
+
+    #modalConfirm:hover {
+        background-color: #FE0000;
+    }
+
+    #modalCancel {
+        background-color: #2D3447;
+        color: white;
+    }
+
+    #modalCancel:hover {
+        background-color: #4d5469;
+    }
+    
+    /* ---------------- Message de confirmation de reset (In-app) ---------------- */
+    #resetConfirmation {
+        position: absolute;
+        top: -5px; /* Déplacer légèrement au-dessus du titre */
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 15px;
+        background-color: #fc5d1e;
+        color: #1a1a1a;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.9em;
+        opacity: 0;
+        transition: opacity 0.3s ease, top 0.3s ease;
+        z-index: 10;
+    }
+    #resetConfirmation.show {
+        opacity: 1;
+        top: 5px; /* Position finale */
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="menu-sidebar" id="menuSidebar">
+        <div class="menu-items-container" id="menuItemsContainer">
+            </div>
+        
+        <button class="reset-button" id="resetCheckboxes">
+            <span class="material-symbols-outlined">restart_alt</span>
+            Réinitialiser les Coches
+        </button>
+    </div>
+
+    <div class="checklist-display" id="checklistDisplay">
+        <div id="resetConfirmation">Réinitialisation complète effectuée !</div>
+
+        <div class="no-selection-message">
+            Sélectionnez une section de vol dans le menu à gauche.
+        </div>
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="resetModal">
+    <div class="modal-content">
+        <h3>Attention ! Réinitialisation</h3>
+        <p>Êtes-vous sûr de vouloir **réinitialiser TOUTES les coches** de la checklist ? Cette action est irréversible.</p>
+        <div class="modal-buttons">
+            <button id="modalConfirm">Oui, Réinitialiser</button>
+            <button id="modalCancel">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<div id="checklistData" style="display: none;">
+    <div class="section" data-section="1" data-title="1. Préparation">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-1-0"><label for="chk-1-0"><span class="custom-checkbox"></span><span>Météo - préparée / vérifiée</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-1-1"><label for="chk-1-1"><span class="custom-checkbox"></span><span>Carburant - calculé pour la nav + attente 45’= ___________ + aérodrome dégagement = _____________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-1-2"><label for="chk-1-2"><span class="custom-checkbox"></span><span>Plan de vol - rempli / déposé</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-1-3"><label for="chk-1-3"><span class="custom-checkbox"></span><span>Documents de vol - disponibles</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-1-4"><label for="chk-1-4"><span class="custom-checkbox"></span><span>Freins de parking - vérifiés et enclenchés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-1-5"><label for="chk-1-5"><span class="custom-checkbox"></span><span>Tous commutateurs - OFF</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="2" data-title="2. Mise en route">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-2-0"><label for="chk-2-0"><span class="custom-checkbox"></span><span>Batteries / APU - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-1"><label for="chk-2-1"><span class="custom-checkbox"></span><span>Train - sorti / 3 vertes</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-2"><label for="chk-2-2"><span class="custom-checkbox"></span><span>Feux nav/anticoll - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-3"><label for="chk-2-3"><span class="custom-checkbox"></span><span>Avionique / Panel - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-4"><label for="chk-2-4"><span class="custom-checkbox"></span><span>COM / NAV - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-5"><label for="chk-2-5"><span class="custom-checkbox"></span><span>ATIS - paramètres notés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-6"><label for="chk-2-6"><span class="custom-checkbox"></span><span>Air conditionné - ON selon besoin</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-7"><label for="chk-2-7"><span class="custom-checkbox"></span><span>Annonces pax - ST BLT ON / NO SMK ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-8"><label for="chk-2-8"><span class="custom-checkbox"></span><span>Instruments - aucune alarme</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-9"><label for="chk-2-9"><span class="custom-checkbox"></span><span>Montre - OK</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-10"><label for="chk-2-10"><span class="custom-checkbox"></span><span>Push back - selon besoin (shift + P)</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-11"><label for="chk-2-11"><span class="custom-checkbox"></span><span>Altimètres + R/A - vérifiés, réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-12"><label for="chk-2-12"><span class="custom-checkbox"></span><span>Index de vitesses - réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-13"><label for="chk-2-13"><span class="custom-checkbox"></span><span>Volets / Trim - vérifiés 0°</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-14"><label for="chk-2-14"><span class="custom-checkbox"></span><span>Commandes de vol - mouvements libres</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-15"><label for="chk-2-15"><span class="custom-checkbox"></span><span>Portes - fermées</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-16"><label for="chk-2-16"><span class="custom-checkbox"></span><span>Carburant - quantité vérifiée</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-17"><label for="chk-2-17"><span class="custom-checkbox"></span><span>Manette des gaz - plein réduit</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-18"><label for="chk-2-18"><span class="custom-checkbox"></span><span>Fuel selector - ALL</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-19"><label for="chk-2-19"><span class="custom-checkbox"></span><span>Pompes carburant - ouvertes</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-20"><label for="chk-2-20"><span class="custom-checkbox"></span><span>Démarrage moteurs - OK</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-21"><label for="chk-2-21"><span class="custom-checkbox"></span><span>Instruments moteurs - vérifiés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-22"><label for="chk-2-22"><span class="custom-checkbox"></span><span>Génératrices - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-23"><label for="chk-2-23"><span class="custom-checkbox"></span><span>APU - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-24"><label for="chk-2-24"><span class="custom-checkbox"></span><span>Syst HYD / ELEC - vérifiés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-25"><label for="chk-2-25"><span class="custom-checkbox"></span><span>COM / NAV - réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-26"><label for="chk-2-26"><span class="custom-checkbox"></span><span>INS / FMS / GPS - réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-27"><label for="chk-2-27"><span class="custom-checkbox"></span><span>GPWS / FDR - activés et réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-2-28"><label for="chk-2-28"><span class="custom-checkbox"></span><span>PA - réglé, non activé</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="3" data-title="3. Avant roulage">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-3-0"><label for="chk-3-0"><span class="custom-checkbox"></span><span>Clairance / IFF - notée / code affiché_______</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-3-1"><label for="chk-3-1"><span class="custom-checkbox"></span><span>Alt. de transition - notée _________________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-3-2"><label for="chk-3-2"><span class="custom-checkbox"></span><span>Feux de roulage - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-3-3"><label for="chk-3-3"><span class="custom-checkbox"></span><span>Dégivrage - ON selon besoin</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-3-4"><label for="chk-3-4"><span class="custom-checkbox"></span><span>Pitot - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-3-5"><label for="chk-3-5"><span class="custom-checkbox"></span><span>Reverse - vérifiées</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-3-6"><label for="chk-3-6"><span class="custom-checkbox"></span><span>Voisinage avion - vérifié</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="4" data-title="4. Roulage">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-4-0"><label for="chk-4-0"><span class="custom-checkbox"></span><span>Freins - vérifiés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-4-1"><label for="chk-4-1"><span class="custom-checkbox"></span><span>Vitesse - 25 kt max</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-4-2"><label for="chk-4-2"><span class="custom-checkbox"></span><span>Aérofreins/spoilers - rentrés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-4-3"><label for="chk-4-3"><span class="custom-checkbox"></span><span>Volets - réglés _______________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-4-4"><label for="chk-4-4"><span class="custom-checkbox"></span><span>Trim - ajustés _______________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-4-5"><label for="chk-4-5"><span class="custom-checkbox"></span><span>Instr. vol / moteurs - vérifiés</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="5" data-title="5. Décollage">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-5-0"><label for="chk-5-0"><span class="custom-checkbox"></span><span>Interruption - procédure revue</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-1"><label for="chk-5-1"><span class="custom-checkbox"></span><span>Annonces pax - ST BLT ON / NO SMK ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-2"><label for="chk-5-2"><span class="custom-checkbox"></span><span>Volets / Trim - vérifiés _______________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-3"><label for="chk-5-3"><span class="custom-checkbox"></span><span>Aérofreins/spoilers - vérifiés rentrés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-4"><label for="chk-5-4"><span class="custom-checkbox"></span><span>Autobrakes - sur RTO</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-5"><label for="chk-5-5"><span class="custom-checkbox"></span><span>Secteur d’arrivée - libre, alignement OK</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-6"><label for="chk-5-6"><span class="custom-checkbox"></span><span>PA - vérifié, non activé</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-7"><label for="chk-5-7"><span class="custom-checkbox"></span><span>Code transpondeur - vérifié</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-8"><label for="chk-5-8"><span class="custom-checkbox"></span><span>Feux roulage / att - OFF / ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-9"><label for="chk-5-9"><span class="custom-checkbox"></span><span>Manette des gaz - _______ % + chrono/heure</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-10"><label for="chk-5-10"><span class="custom-checkbox"></span><span>V1 = ________ KIAS volets ______</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-11"><label for="chk-5-11"><span class="custom-checkbox"></span><span>VR = _________ KIAS volets _____</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-12"><label for="chk-5-12"><span class="custom-checkbox"></span><span>V2 = _________ KIAS volets _____</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-13"><label for="chk-5-13"><span class="custom-checkbox"></span><span>V1/VR = _____ et V2 = _____ si volets 0°</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-5-14"><label for="chk-5-14"><span class="custom-checkbox"></span><span>Instruments moteurs - vérifiés hors rouge</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="6" data-title="6. Montée">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-6-0"><label for="chk-6-0"><span class="custom-checkbox"></span><span>Train - rentré _______________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-1"><label for="chk-6-1"><span class="custom-checkbox"></span><span>Volets - rentrés _______________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-2"><label for="chk-6-2"><span class="custom-checkbox"></span><span>Feux roulage / att - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-3"><label for="chk-6-3"><span class="custom-checkbox"></span><span>COM / NAV - réglées</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-4"><label for="chk-6-4"><span class="custom-checkbox"></span><span>Taux initial - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-5"><label for="chk-6-5"><span class="custom-checkbox"></span><span>PA - enclenché</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-6"><label for="chk-6-6"><span class="custom-checkbox"></span><span>Manette des gaz - N _______________ %</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-7"><label for="chk-6-7"><span class="custom-checkbox"></span><span>Autobrakes - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-8"><label for="chk-6-8"><span class="custom-checkbox"></span><span>Taux sol – FL ____ - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-9"><label for="chk-6-9"><span class="custom-checkbox"></span><span>Taux FL _________ - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-10"><label for="chk-6-10"><span class="custom-checkbox"></span><span>Taux FL _________ - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-11"><label for="chk-6-11"><span class="custom-checkbox"></span><span>Vitesse - _______ KIAS / M _______ - _______ KIAS / M _______ - _______ KIAS / M _______</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-12"><label for="chk-6-12"><span class="custom-checkbox"></span><span>Annonces pax - ST BLT OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-13"><label for="chk-6-13"><span class="custom-checkbox"></span><span>1013.2 ou 29.92 - affichée à Alt. Transition</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-6-14"><label for="chk-6-14"><span class="custom-checkbox"></span><span>Carburant - débit _______________</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="7" data-title="7. Croisière">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-7-0"><label for="chk-7-0"><span class="custom-checkbox"></span><span>Altimètres - vérifiés 1013 ou 29.92</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-7-1"><label for="chk-7-1"><span class="custom-checkbox"></span><span>Vitesse - _______ – FL _______ - _______ – FL _______ - _______ – FL _______</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-7-2"><label for="chk-7-2"><span class="custom-checkbox"></span><span>Manette des gaz - N _______________ %</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-7-3"><label for="chk-7-3"><span class="custom-checkbox"></span><span>COM / NAV / PA - réglées</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-7-4"><label for="chk-7-4"><span class="custom-checkbox"></span><span>Trim - ajusté si PA OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-7-5"><label for="chk-7-5"><span class="custom-checkbox"></span><span>Instruments moteurs - vérifiés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-7-6"><label for="chk-7-6"><span class="custom-checkbox"></span><span>Carburant - vérifié - débit moyen _______________</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="8" data-title="8. Descente">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-8-0"><label for="chk-8-0"><span class="custom-checkbox"></span><span>ATIS / Info arrivée - notés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-1"><label for="chk-8-1"><span class="custom-checkbox"></span><span>Cartes d’approche - préparés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-2"><label for="chk-8-2"><span class="custom-checkbox"></span><span>Début de descente - calculé</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-3"><label for="chk-8-3"><span class="custom-checkbox"></span><span>Aérofreins/spoilers - sans si possible / armés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-4"><label for="chk-8-4"><span class="custom-checkbox"></span><span>Volets - ______ avant descente</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-5"><label for="chk-8-5"><span class="custom-checkbox"></span><span>Niv de transition - noté</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-6"><label for="chk-8-6"><span class="custom-checkbox"></span><span>Altitude d’arrivée - notée</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-7"><label for="chk-8-7"><span class="custom-checkbox"></span><span>QNH - affiché au Niv. Transition</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-8"><label for="chk-8-8"><span class="custom-checkbox"></span><span>Annonces pax - vérifier ST BLT ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-9"><label for="chk-8-9"><span class="custom-checkbox"></span><span>COM / NAV - réglées</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-10"><label for="chk-8-10"><span class="custom-checkbox"></span><span>PA - réglé, activé</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-11"><label for="chk-8-11"><span class="custom-checkbox"></span><span>Taux FL _________ - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-12"><label for="chk-8-12"><span class="custom-checkbox"></span><span>Taux FL _________ - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-13"><label for="chk-8-13"><span class="custom-checkbox"></span><span>Taux FL _________ - _______________ ft/mn</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-14"><label for="chk-8-14"><span class="custom-checkbox"></span><span>Vitesse - M ______ / _____ KIAS - ______ KIAS < FL 100</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-15"><label for="chk-8-15"><span class="custom-checkbox"></span><span>Manette des gaz - N _______________ % sous FL 100 - N _______________ %</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-8-16"><label for="chk-8-16"><span class="custom-checkbox"></span><span>Carburant max att - vérifié < _______________ - débit _______________</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="9" data-title="9. Approche">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-9-0"><label for="chk-9-0"><span class="custom-checkbox"></span><span>COM / NAV / PA - réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-1"><label for="chk-9-1"><span class="custom-checkbox"></span><span>Radiosonde - active, DH ajustée</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-2"><label for="chk-9-2"><span class="custom-checkbox"></span><span>QNH - affiché</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-3"><label for="chk-9-3"><span class="custom-checkbox"></span><span>Vitesse - _______________ KIAS</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-4"><label for="chk-9-4"><span class="custom-checkbox"></span><span>Manette des gaz - N _______________ %</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-5"><label for="chk-9-5"><span class="custom-checkbox"></span><span>Volets - réglés _______________</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-6"><label for="chk-9-6"><span class="custom-checkbox"></span><span>Aérofreins/spoilers - rentrés / armés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-7"><label for="chk-9-7"><span class="custom-checkbox"></span><span>Freins - vérifiés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-8"><label for="chk-9-8"><span class="custom-checkbox"></span><span>Annonces pax - ST BLT ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-9"><label for="chk-9-9"><span class="custom-checkbox"></span><span>Fuel pumps / Pitot - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-10"><label for="chk-9-10"><span class="custom-checkbox"></span><span>Train - sorti</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-9-11"><label for="chk-9-11"><span class="custom-checkbox"></span><span>Check list atterrissage - effectuée</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="10" data-title="10. Atterrissage">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-10-0"><label for="chk-10-0"><span class="custom-checkbox"></span><span>Interruption - procédure revue</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-10-1"><label for="chk-10-1"><span class="custom-checkbox"></span><span>Manette des gaz - plein réduit</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-10-2"><label for="chk-10-2"><span class="custom-checkbox"></span><span>PA - sur OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-10-3"><label for="chk-10-3"><span class="custom-checkbox"></span><span>Atterrissage - _______________ KIAS</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-10-4"><label for="chk-10-4"><span class="custom-checkbox"></span><span>Aérofreins/spoilers - sortis</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="11" data-title="11. Après atterrissage">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-11-0"><label for="chk-11-0"><span class="custom-checkbox"></span><span>PA - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-1"><label for="chk-11-1"><span class="custom-checkbox"></span><span>Train - sorti / 3 vertes</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-2"><label for="chk-11-2"><span class="custom-checkbox"></span><span>Volets - rentrés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-3"><label for="chk-11-3"><span class="custom-checkbox"></span><span>Aérofreins/spoilers - rentrés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-4"><label for="chk-11-4"><span class="custom-checkbox"></span><span>Radar - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-5"><label for="chk-11-5"><span class="custom-checkbox"></span><span>Feux nav/anticoll - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-6"><label for="chk-11-6"><span class="custom-checkbox"></span><span>Annonces pax - ST BLT OFF / NO SMK OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-7"><label for="chk-11-7"><span class="custom-checkbox"></span><span>Pompes carburant - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-11-8"><label for="chk-11-8"><span class="custom-checkbox"></span><span>Transpondeur - standby</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="12" data-title="12. Roulage - arrivée">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-12-0"><label for="chk-12-0"><span class="custom-checkbox"></span><span>Altimètres - vérifiés, réglés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-1"><label for="chk-12-1"><span class="custom-checkbox"></span><span>Freins de parking - vérifiés et enclenchés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-2"><label for="chk-12-2"><span class="custom-checkbox"></span><span>Feux roulage - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-3"><label for="chk-12-3"><span class="custom-checkbox"></span><span>Moteurs - arrêtés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-4"><label for="chk-12-4"><span class="custom-checkbox"></span><span>Parking brake - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-5"><label for="chk-12-5"><span class="custom-checkbox"></span><span>Batteries / APU - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-6"><label for="chk-12-6"><span class="custom-checkbox"></span><span>Tous commutateurs - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-7"><label for="chk-12-7"><span class="custom-checkbox"></span><span>Instruments - aucune alarme</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-12-8"><label for="chk-12-8"><span class="custom-checkbox"></span><span>Porte avion - ouverte</span></label></div>
+        </div>
+    </div>
+    <div class="section" data-section="13" data-title="13. Extinction">
+        <div class="actions-list">
+            <div class="action-item"><input type="checkbox" id="chk-13-0"><label for="chk-13-0"><span class="custom-checkbox"></span><span>Moteurs - arrêtés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-1"><label for="chk-13-1"><span class="custom-checkbox"></span><span>Parking brake - ON</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-2"><label for="chk-13-2"><span class="custom-checkbox"></span><span>Batteries / APU - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-3"><label for="chk-13-3"><span class="custom-checkbox"></span><span>Tous commutateurs - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-4"><label for="chk-13-4"><span class="custom-checkbox"></span><span>Instruments - aucune alarme</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-5"><label for="chk-13-5"><span class="custom-checkbox"></span><span>Porte avion - ouverte</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-6"><label for="chk-13-6"><span class="custom-checkbox"></span><span>Freins de parking - vérifiés et enclenchés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-7"><label for="chk-13-7"><span class="custom-checkbox"></span><span>Volets - rentrés</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-8"><label for="chk-13-8"><span class="custom-checkbox"></span><span>Train - sorti / 3 vertes</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-9"><label for="chk-13-9"><span class="custom-checkbox"></span><span>Feux nav/anticoll - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-10"><label for="chk-13-10"><span class="custom-checkbox"></span><span>Annonces pax - ST BLT OFF / NO SMK OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-11"><label for="chk-13-11"><span class="custom-checkbox"></span><span>Pompes carburant - OFF</span></label></div>
+            <div class="action-item"><input type="checkbox" id="chk-13-12"><label for="chk-13-12"><span class="custom-checkbox"></span><span>Transpondeur - standby</span></label></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const menuItemsContainer = document.getElementById('menuItemsContainer');
+    const checklistDisplay = document.getElementById('checklistDisplay');
+    const checklistDataContainer = document.getElementById('checklistData');
+    const sections = checklistDataContainer.querySelectorAll('.section');
+    const resetButton = document.getElementById('resetCheckboxes');
+    const resetModal = document.getElementById('resetModal');
+    const modalConfirm = document.getElementById('modalConfirm');
+    const modalCancel = document.getElementById('modalCancel');
+    const resetConfirmation = document.getElementById('resetConfirmation'); // Nouveau
+
+    let currentSectionId = null; 
+
+    /* ---------------- Fonctions de Gestion des Données (Stockage Local) ---------------- */
+
+    function saveCheckboxesState() {
+        const allSectionsData = {};
+        
+        sections.forEach(section => {
+            const sectionId = section.getAttribute('data-section');
+            const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+            const checks = [];
+            checkboxes.forEach(checkbox => {
+                checks.push(checkbox.checked);
+            });
+            allSectionsData[sectionId] = checks;
+        });
+
+        localStorage.setItem('sectionsData', JSON.stringify(allSectionsData));
+    }
+
+    function loadCheckboxesState(currentCheckboxes, sectionId) {
+        const sectionsData = JSON.parse(localStorage.getItem('sectionsData'));
+        if (sectionsData && sectionsData[sectionId]) {
+            const checks = sectionsData[sectionId];
+            currentCheckboxes.forEach((checkbox, index) => {
+                if (checks[index] !== undefined) {
+                    checkbox.checked = checks[index];
+                    // Appliquer la classe "checked" au conteneur parent pour le style visuel
+                    checkbox.closest('.action-item').classList.toggle('checked', checks[index]);
+                }
+            });
+        }
+    }
+
+    function updateSourceFromDisplay(sectionId) {
+        const activeActionsList = checklistDisplay.querySelector('.actions-list.active');
+        const sourceSection = document.querySelector(`#checklistData .section[data-section="${sectionId}"]`);
+        
+        if (activeActionsList && sourceSection) {
+            const activeCheckboxes = activeActionsList.querySelectorAll('input[type="checkbox"]');
+            const sourceCheckboxes = sourceSection.querySelectorAll('input[type="checkbox"]');
+            
+            activeCheckboxes.forEach((checkbox, index) => {
+                if (sourceCheckboxes[index]) {
+                    sourceCheckboxes[index].checked = checkbox.checked;
+                }
+            });
+        }
+    }
+
+    /* ---------------- Fonctions d'Affichage et d'Interaction ---------------- */
+
+    function populateMenu() {
+        menuItemsContainer.innerHTML = ''; 
+
+        sections.forEach(section => {
+            const title = section.getAttribute('data-title');
+            const sectionId = section.getAttribute('data-section');
+
+            const menuItem = document.createElement('div');
+            menuItem.classList.add('menu-item');
+            menuItem.textContent = title;
+            menuItem.setAttribute('data-target', sectionId);
+
+            menuItem.addEventListener('click', () => {
+                if (currentSectionId) {
+                    updateSourceFromDisplay(currentSectionId);
+                    saveCheckboxesState();
+                }
+                showChecklist(sectionId);
+            });
+
+            menuItemsContainer.appendChild(menuItem);
+        });
+    }
+
+    function showChecklist(sectionId) {
+        // Cacher le message de confirmation au changement de section
+        resetConfirmation.classList.remove('show');
+
+        // 1. Mettre à jour la section active
+        currentSectionId = sectionId;
+
+        // 2. Mettre à jour l'état visuel du menu
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('data-target') === sectionId) {
+                item.classList.add('active');
+            }
+        });
+
+        // 3. Préparer l'affichage (titre et actions)
+        const selectedSection = document.querySelector(`#checklistData .section[data-section="${sectionId}"]`);
+        const title = selectedSection.getAttribute('data-title');
+        
+        // Clone le conteneur d'actions 
+        const actionsList = selectedSection.querySelector('.actions-list').cloneNode(true); 
+        
+        // 4. Vider l'affichage, insérer le titre et l'action list
+        checklistDisplay.innerHTML = '';
+        
+        const header = document.createElement('h2');
+        header.classList.add('display-header');
+        header.textContent = title;
+        checklistDisplay.appendChild(header);
+        
+        // Réinsérer le message de confirmation dans le header (pour le positionnement relatif)
+        header.appendChild(resetConfirmation); 
+        
+        checklistDisplay.appendChild(actionsList);
+        actionsList.classList.add('active');
+
+        // 5. Charger l'état et attacher les écouteurs d'événements
+        const checkboxes = actionsList.querySelectorAll('input[type="checkbox"]');
+        loadCheckboxesState(checkboxes, sectionId);
+
+        checkboxes.forEach((checkbox) => {
+            const actionItem = checkbox.closest('.action-item');
+
+            // Toggle la classe 'checked' au chargement
+            actionItem.classList.toggle('checked', checkbox.checked);
+
+            // Attacher l'écouteur de clic à l'élément entier
+            actionItem.addEventListener('click', (e) => {
+                // Bascule l'état de la checkbox
+                checkbox.checked = !checkbox.checked;
+                
+                // Met à jour la classe CSS du conteneur pour le style (barré/opacité)
+                actionItem.classList.toggle('checked', checkbox.checked);
+                
+                // Mettre à jour la source de vérité (conteneur caché)
+                const sourceCheckbox = document.querySelector(`#checklistData .section[data-section="${sectionId}"] input[id="${checkbox.id}"]`);
+                if (sourceCheckbox) {
+                    sourceCheckbox.checked = checkbox.checked;
+                }
+                
+                // Sauvegarder dans le localStorage
+                saveCheckboxesState();
+            });
+        });
+    }
+    
+    /**
+     * Réinitialise toutes les coches et affiche une confirmation dans l'application.
+     */
+    function resetAllCheckboxes() {
+        // 1. Réinitialiser les checkboxes dans le conteneur de données (source de vérité)
+        sections.forEach(section => {
+            section.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+        
+        // 2. Vider le cache
+        localStorage.removeItem('sectionsData');
+        
+        // 3. Cacher la modale
+        resetModal.style.display = 'none';
+        
+        // 4. Réafficher la section actuelle (ou la première)
+        const targetSectionId = currentSectionId || (sections.length > 0 ? sections[0].getAttribute('data-section') : null);
+        
+        if (targetSectionId) {
+             showChecklist(targetSectionId); 
+        } else {
+             checklistDisplay.innerHTML = '<div class="no-selection-message">Sélectionnez une section de vol dans le menu à gauche.</div>';
+        }
+        
+        // 5. Afficher la confirmation IN-APP
+        resetConfirmation.classList.add('show');
+        setTimeout(() => {
+            resetConfirmation.classList.remove('show');
+        }, 3000); // Disparaît après 3 secondes
+    }
+
+
+    /* ---------------- Gestion de la Modale de Reset ---------------- */
+
+    // Afficher la modale quand le bouton Reset est cliqué
+    resetButton.addEventListener('click', () => {
+        resetModal.style.display = 'flex';
+    });
+
+    // Confirmer le reset
+    modalConfirm.addEventListener('click', resetAllCheckboxes);
+
+    // Annuler le reset
+    modalCancel.addEventListener('click', () => {
+        resetModal.style.display = 'none';
+    });
+    
+    // Cacher la modale si l'utilisateur clique sur l'arrière-plan
+    resetModal.addEventListener('click', (e) => {
+        if (e.target === resetModal) {
+            resetModal.style.display = 'none';
+        }
+    });
+
+
+    /* ---------------- Initialisation ---------------- */
+
+    function initialLoad() {
+        // 1. Initialiser le menu
+        populateMenu();
+
+        // 2. Charger l'état initial des données (source de vérité)
+        const sectionsData = JSON.parse(localStorage.getItem('sectionsData'));
+        if (sectionsData) {
+            sections.forEach(section => {
+                const sectionId = section.getAttribute('data-section');
+                const checkboxes = section.querySelectorAll('input[type="checkbox"]');
+                const checks = sectionsData[sectionId];
+                if (checks) {
+                    checkboxes.forEach((checkbox, index) => {
+                        if (checks[index] !== undefined) {
+                             checkbox.checked = checks[index];
+                        }
+                    });
+                }
+            });
+        }
+
+        // 3. Afficher la première section par défaut
+        const firstSectionId = sections.length > 0 ? sections[0].getAttribute('data-section') : null;
+        if (firstSectionId) {
+            showChecklist(firstSectionId);
+        }
+    }
+
+    initialLoad();
+
+</script>
+
+</body>
+</html>
